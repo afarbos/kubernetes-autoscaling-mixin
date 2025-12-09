@@ -46,13 +46,13 @@ tests:
   - interval: 1m
     input_series:
       - series: karpenter_nodeclaims_termination_duration_seconds_sum{namespace="karpenter", job="karpenter", nodepool="nodepool-a"}
-        values: "40000x20"
+        values: "0+2400x20"
       - series: karpenter_nodeclaims_termination_duration_seconds_count{namespace="karpenter", job="karpenter", nodepool="nodepool-a"}
-        values: "20x20"
+        values: "0+1x20"
       - series: karpenter_nodeclaims_termination_duration_seconds_sum{namespace="karpenter", job="karpenter", nodepool="nodepool-b"}
-        values: "1x20"
+        values: "0+60x20"
       - series: karpenter_nodeclaims_termination_duration_seconds_count{namespace="karpenter", job="karpenter", nodepool="nodepool-b"}
-        values: "1x20"
+        values: "0+1x20"
     alert_rule_test:
       - eval_time: 20m
         alertname: KarpenterNodeClaimsTerminationDurationHigh
