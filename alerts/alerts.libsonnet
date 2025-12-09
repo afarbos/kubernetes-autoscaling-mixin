@@ -34,15 +34,19 @@
             alert: 'KarpenterNodeClaimsTerminationDurationHigh',
             expr: |||
               sum(
-                karpenter_nodeclaims_termination_duration_seconds_sum{
-                  %(karpenterSelector)s
-                }
+                rate(
+                  karpenter_nodeclaims_termination_duration_seconds_sum{
+                    %(karpenterSelector)s
+                  }[5m]
+                )
               ) by (%(clusterLabel)s, namespace, job, nodepool)
               /
               sum(
-                karpenter_nodeclaims_termination_duration_seconds_count{
-                  %(karpenterSelector)s
-                }
+                rate(
+                  karpenter_nodeclaims_termination_duration_seconds_count{
+                    %(karpenterSelector)s
+                  }[5m]
+                )
               ) by (%(clusterLabel)s, namespace, job, nodepool) > %(nodeclaimTerminationThreshold)s
             ||| % karpenterConfig,
             labels: {
