@@ -1,458 +1,282 @@
+local mixinUtils = import 'github.com/adinhodovic/mixin-utils/utils.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+local util = import 'util.libsonnet';
 
 local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
 
-local variable = dashboard.variable;
-local datasource = variable.datasource;
-local query = variable.query;
-local prometheus = g.query.prometheus;
-
-local timeSeriesPanel = g.panel.timeSeries;
-
-// Timeseries
-local tsOptions = timeSeriesPanel.options;
-local tsStandardOptions = timeSeriesPanel.standardOptions;
-local tsQueryOptions = timeSeriesPanel.queryOptions;
-local tsFieldConfig = timeSeriesPanel.fieldConfig;
-local tsCustom = tsFieldConfig.defaults.custom;
-local tsLegend = tsOptions.legend;
-
 {
-  grafanaDashboards+:: std.prune({
+  grafanaDashboards+:: {
+    ['kubernetes-autoscaling-mixin-karpenter-act.json']:
+      if !$._config.karpenter.enabled then {} else
 
-    local datasourceVariable =
-      datasource.new(
-        'datasource',
-        'prometheus',
-      ) +
-      datasource.generalOptions.withLabel('Data source') +
-      {
-        current: {
-          selected: true,
-          text: $._config.datasourceName,
-          value: $._config.datasourceName,
-        },
-      },
+        local defaultVariables = util.variables($._config);
 
-    local clusterVariable =
-      query.new(
-        $._config.clusterLabel,
-        'label_values(kube_pod_info{%(kubeStateMetricsSelector)s}, cluster)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Cluster') +
-      query.refresh.onLoad() +
-      query.refresh.onTime() +
-      (
-        if $._config.showMultiCluster
-        then query.generalOptions.showOnDashboard.withLabelAndValue()
-        else query.generalOptions.showOnDashboard.withNothing()
-      ),
+        local variables = [
+          defaultVariables.datasource,
+          defaultVariables.cluster,
+          defaultVariables.jobSimple,
+          defaultVariables.nodepoolSimple,
+        ];
 
-    local jobVariable =
-      query.new(
-        'job',
-        'label_values(karpenter_nodes_allocatable{%(clusterLabel)s="$cluster"}, job)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Job') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+        local defaultFilters = util.filters($._config);
+        local queries = {
+          // Node Activity
+          nodesCreatedByNodePool: |||
+            round(
+              sum(
+                increase(
+                  karpenter_nodes_created_total{
+                    %(base)s,
+                    %(nodepool)s
+                  }[$__rate_interval]
+                )
+              ) by (nodepool)
+            )
+          ||| % defaultFilters,
 
-    local nodePoolVariable =
-      query.new(
-        'nodepool',
-        'label_values(karpenter_nodepools_limit{%(clusterLabel)s="$cluster", job=~"$job"}, nodepool)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Node Pool') +
-      query.selectionOptions.withMulti(true) +
-      query.selectionOptions.withIncludeAll(true) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+          nodesTerminatedByNodePool: |||
+            round(
+              sum(
+                increase(
+                  karpenter_nodes_terminated_total{
+                    %(base)s,
+                    %(nodepool)s
+                  }[$__rate_interval]
+                )
+              ) by (nodepool)
+            )
+          ||| % defaultFilters,
 
-    local variables = [
-      datasourceVariable,
-      clusterVariable,
-      jobVariable,
-      nodePoolVariable,
-    ],
+          nodesVoluntaryDisruptionDecisions: |||
+            round(
+              sum(
+                increase(
+                  karpenter_voluntary_disruption_decisions_total{
+                    %(base)s
+                  }[$__rate_interval]
+                )
+              ) by (decision, reason)
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodesCreatedByNodePoolQuery = |||
-      round(
-        sum(
-          increase(
-            karpenter_nodes_created_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job",
-              nodepool=~"$nodepool"
-            }[$__rate_interval]
-          )
-        ) by (nodepool)
-      )
-    ||| % $._config,
+          nodesVoluntaryDisruptionEligible: |||
+            round(
+              sum(
+                karpenter_voluntary_disruption_eligible_nodes{
+                  %(base)s
+                }
+              ) by (reason)
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodesCreatedByNodePoolTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Nodes Created by Node Pool',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterNodesCreatedByNodePoolQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ nodepool }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          nodesDisrupted: |||
+            round(
+              sum(
+                increase(
+                  karpenter_nodeclaims_disrupted_total{
+                    %(base)s,
+                    %(nodepool)s
+                  }[$__rate_interval]
+                )
+              ) by (nodepool, capacity_type, reason)
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodesTerminatedByNodePoolQuery = std.strReplace(karpenterNodesCreatedByNodePoolQuery, 'created', 'terminated'),
+          // Pod Activity
+          podStateByPhase: |||
+            round(
+              sum(
+                karpenter_pods_state{
+                  %(base)s
+                }
+              ) by (phase)
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodesTerminatedByNodePoolTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Nodes Terminated by Node Pool',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterNodesTerminatedByNodePoolQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ nodepool }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          podsStartupP50Duration: |||
+            max(
+              karpenter_pods_startup_duration_seconds{
+                %(base)s,
+                quantile="0.5"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodesVoluntaryDisruptionDecisionsQuery = |||
-      round(
-        sum(
-          increase(
-            karpenter_voluntary_disruption_decisions_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job",
-            }[$__rate_interval]
-          )
-        ) by (decision, reason)
-      )
-    ||| % $._config,
+          podsStartupP95Duration: |||
+            max(
+              karpenter_pods_startup_duration_seconds{
+                %(base)s,
+                quantile="0.95"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodesVoluntaryDisruptionDecisionsTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Node Disruption Decisions by Reason and Decision',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterNodesVoluntaryDisruptionDecisionsQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ decision }} - {{ reason }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          podsStartupP99Duration: |||
+            max(
+              karpenter_pods_startup_duration_seconds{
+                %(base)s,
+                quantile="0.99"
+              }
+            )
+          ||| % defaultFilters,
+        };
 
-    local karpenterNodesVoluntaryDisruptionEligibleQuery = |||
-      round(
-        sum(
-          karpenter_voluntary_disruption_eligible_nodes{
-            %(clusterLabel)s="$cluster",
-            job=~"$job"
-          }
-        ) by (reason)
-      )
-    ||| % $._config,
+        local panels = {
+          // Node Activity
+          nodesCreatedByNodePool:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Nodes Created by Node Pool',
+              'short',
+              queries.nodesCreatedByNodePool,
+              '{{ nodepool }}',
+              calcs=['lastNotNull', 'mean'],
+              description='The number of nodes created by node pool.',
+            ),
 
-    local karpenterNodesVoluntaryDisruptionEligibleTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Nodes Eligible for Disruption by Reason',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterNodesVoluntaryDisruptionEligibleQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ reason }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          nodesTerminatedByNodePool:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Nodes Terminated by Node Pool',
+              'short',
+              queries.nodesTerminatedByNodePool,
+              '{{ nodepool }}',
+              calcs=['lastNotNull', 'mean'],
+              description='The number of nodes terminated by node pool.',
+            ),
 
+          nodesVoluntaryDisruptionDecisions:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Node Disruption Decisions by Reason and Decision',
+              'short',
+              queries.nodesVoluntaryDisruptionDecisions,
+              '{{ decision }} - {{ reason }}',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The number of voluntary disruption decisions by reason and decision.',
+            ),
 
-    local karpenterNodesDisruptedQuery = |||
-      round(
-        sum(
-          increase(
-            karpenter_nodeclaims_disrupted_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job",
-              nodepool=~"$nodepool"
-            }[$__rate_interval]
-          )
-        ) by (nodepool, capacity_type, reason)
-      )
-    ||| % $._config,
+          nodesVoluntaryDisruptionEligible:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Nodes Eligible for Disruption by Reason',
+              'short',
+              queries.nodesVoluntaryDisruptionEligible,
+              '{{ reason }}',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The number of nodes eligible for voluntary disruption by reason.',
+            ),
 
-    local karpenterNodesDisruptedTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Nodes Disrupted by Node Pool',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterNodesDisruptedQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ nodepool }} - {{ capacity_type }} - {{ reason }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          nodesDisrupted:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Nodes Disrupted by Node Pool',
+              'short',
+              queries.nodesDisrupted,
+              '{{ nodepool }} - {{ capacity_type }} - {{ reason }}',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The number of nodes disrupted by node pool, capacity type, and reason.',
+            ),
 
-    local karpenterPodStateByPhaseQuery = |||
-      round(
-        sum(
-          karpenter_pods_state{
-            %(clusterLabel)s="$cluster",
-            job=~"$job"
-          }
-        ) by (phase)
-      )
-    ||| % $._config,
+          // Pod Activity
+          podStateByPhase:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Pods by Phase',
+              'short',
+              queries.podStateByPhase,
+              '{{ phase }}',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The number of pods by phase.',
+            ),
 
-    local karpenterPodStateByPhaseTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Pods by Phase',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterPodStateByPhaseQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ phase }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          podStartupDuration:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Pods Startup Duration',
+              's',
+              [
+                {
+                  expr: queries.podsStartupP50Duration,
+                  legend: 'P50',
+                  interval: '1m',
+                },
+                {
+                  expr: queries.podsStartupP95Duration,
+                  legend: 'P95',
+                  interval: '1m',
+                },
+                {
+                  expr: queries.podsStartupP99Duration,
+                  legend: 'P99',
+                  interval: '1m',
+                },
+              ],
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The duration for pods to start up.',
+            ),
+        };
 
-    local karpenterPodsStartupP50DurationQuery = |||
-      max(
-        karpenter_pods_startup_duration_seconds{
-          %(clusterLabel)s="$cluster",
-          job=~"$job",
-          quantile="0.5"
-        }
-      )
-    ||| % $._config,
-    local karpenterPodsStartupP95DurationQuery = std.strReplace(karpenterPodsStartupP50DurationQuery, '0.5', '0.95'),
-    local karpenterPodsStartupP99DurationQuery = std.strReplace(karpenterPodsStartupP50DurationQuery, '0.5', '0.99'),
-
-    local karpenterPodStartupDurationTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Pods Startup Duration',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterPodsStartupP50DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P50'
-          ) +
-          prometheus.withInterval('1m'),
-          prometheus.new(
-            '$datasource',
-            karpenterPodsStartupP95DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P95'
-          ) +
-          prometheus.withInterval('1m'),
-          prometheus.new(
-            '$datasource',
-            karpenterPodsStartupP99DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P99'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
-
-    local karpenterNodePoolActivityRow =
-      row.new(
-        title='Node Pool Activity',
-      ),
-
-    local karpenterPodActivityRow =
-      row.new(
-        title='Pod Activity',
-      ),
-
-    'kubernetes-autoscaling-mixin-karpenter-act.json': if $._config.karpenter.enabled then
-      $._config.bypassDashboardValidation +
-      dashboard.new(
-        'Kubernetes / Autoscaling / Karpenter / Activity',
-      ) +
-      dashboard.withDescription('A dashboard that monitors Karpenter and focuses on Karpenter deletion/creation activity. It is created using the [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).') +
-      dashboard.withUid($._config.karpenterActivityDashboardUid) +
-      dashboard.withTags($._config.tags + ['karpenter']) +
-      dashboard.withTimezone('utc') +
-      dashboard.withEditable(true) +
-      dashboard.time.withFrom('now-24h') +
-      dashboard.time.withTo('now') +
-      dashboard.withVariables(variables) +
-      dashboard.withLinks(
-        [
-          dashboard.link.dashboards.new('Kubernetes / Autoscaling', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true) +
-          dashboard.link.link.options.withAsDropdown(true) +
-          dashboard.link.link.options.withIncludeVars(true) +
-          dashboard.link.link.options.withKeepTime(true),
-        ]
-      ) +
-      dashboard.withPanels(
-        [
-          karpenterNodePoolActivityRow +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(0) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
+        local rows =
           [
-            karpenterNodesCreatedByNodePoolTimeSeriesPanel,
-            karpenterNodesTerminatedByNodePoolTimeSeriesPanel,
-          ],
-          panelWidth=12,
-          panelHeight=6,
-          startY=1
+            row.new('Node Pool Activity') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(0) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.nodesCreatedByNodePool,
+              panels.nodesTerminatedByNodePool,
+            ],
+            panelWidth=12,
+            panelHeight=6,
+            startY=1
+          ) +
+          grid.makeGrid(
+            [
+              panels.nodesVoluntaryDisruptionDecisions,
+              panels.nodesVoluntaryDisruptionEligible,
+              panels.nodesDisrupted,
+            ],
+            panelWidth=8,
+            panelHeight=6,
+            startY=7
+          ) +
+          [
+            row.new('Pod Activity') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(13) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.podStateByPhase,
+              panels.podStartupDuration,
+            ],
+            panelWidth=12,
+            panelHeight=6,
+            startY=14
+          );
+
+        mixinUtils.dashboards.bypassDashboardValidation +
+        dashboard.new(
+          'Kubernetes / Autoscaling / Karpenter / Activity',
         ) +
-        grid.makeGrid(
-          [
-            karpenterNodesVoluntaryDisruptionDecisionsTimeSeriesPanel,
-            karpenterNodesVoluntaryDisruptionEligibleTimeSeriesPanel,
-          ],
-          panelWidth=12,
-          panelHeight=6,
-          startY=7
+        dashboard.withDescription('A dashboard that monitors Karpenter and focuses on Karpenter deletion/creation activity. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
+        dashboard.withUid($._config.karpenterActivityDashboardUid) +
+        dashboard.withTags($._config.tags + ['karpenter']) +
+        dashboard.withTimezone('utc') +
+        dashboard.withEditable(true) +
+        dashboard.time.withFrom('now-24h') +
+        dashboard.time.withTo('now') +
+        dashboard.withVariables(variables) +
+        dashboard.withLinks(
+          mixinUtils.dashboards.dashboardLinks('Kubernetes / Autoscaling', $._config, dropdown=true)
         ) +
-        grid.makeGrid(
-          [
-            karpenterNodesDisruptedTimeSeriesPanel,
-          ],
-          panelWidth=24,
-          panelHeight=6,
-          startY=13
+        dashboard.withPanels(
+          rows
         ) +
-        [
-          karpenterPodActivityRow +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(19) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            karpenterPodStateByPhaseTimeSeriesPanel,
-            karpenterPodStartupDurationTimeSeriesPanel,
-          ],
-          panelWidth=12,
-          panelHeight=6,
-          startY=20
-        )
-      ) +
-      if $._config.annotation.enabled then
-        dashboard.withAnnotations($._config.customAnnotation)
-      else {},
-  }) + if $._config.karpenter.enabled then {
-    'kubernetes-autoscaling-mixin-karpenter-act.json'+: $._config.bypassDashboardValidation,
-  } else {},
+        dashboard.withAnnotations(
+          mixinUtils.dashboards.annotations($._config, defaultFilters)
+        ),
+  },
 }
+

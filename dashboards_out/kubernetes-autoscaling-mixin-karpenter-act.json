@@ -1,12 +1,15 @@
 {
    "__inputs": [ ],
    "__requires": [ ],
-   "description": "A dashboard that monitors Karpenter and focuses on Karpenter deletion/creation activity. It is created using the [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).",
+   "annotations": {
+      "list": [ ]
+   },
+   "description": "A dashboard that monitors Karpenter and focuses on Karpenter deletion/creation activity. The dashboards were generated using [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin). Open issues and create feature requests in the repository.",
    "editable": true,
    "links": [
       {
          "asDropdown": true,
-         "includeVars": true,
+         "includeVars": false,
          "keepTime": true,
          "tags": [
             "kubernetes",
@@ -33,13 +36,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The number of nodes created by node pool.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
@@ -60,7 +64,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -75,8 +79,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    increase(\n      karpenter_nodes_created_total{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        nodepool=~\"$nodepool\"\n      }[$__rate_interval]\n    )\n  ) by (nodepool)\n)\n",
-               "interval": "1m",
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    increase(\n      karpenter_nodes_created_total{\n        cluster=\"$cluster\", job=~\"$job\",\n        nodepool=~\"$nodepool\"\n      }[$__rate_interval]\n    )\n  ) by (nodepool)\n)\n",
                "legendFormat": "{{ nodepool }}"
             }
          ],
@@ -85,13 +89,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The number of nodes terminated by node pool.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
@@ -112,7 +117,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -127,8 +132,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    increase(\n      karpenter_nodes_terminated_total{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        nodepool=~\"$nodepool\"\n      }[$__rate_interval]\n    )\n  ) by (nodepool)\n)\n",
-               "interval": "1m",
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    increase(\n      karpenter_nodes_terminated_total{\n        cluster=\"$cluster\", job=~\"$job\",\n        nodepool=~\"$nodepool\"\n      }[$__rate_interval]\n    )\n  ) by (nodepool)\n)\n",
                "legendFormat": "{{ nodepool }}"
             }
          ],
@@ -137,20 +142,21 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The number of voluntary disruption decisions by reason and decision.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
          },
          "gridPos": {
             "h": 6,
-            "w": 12,
+            "w": 8,
             "x": 0,
             "y": 7
          },
@@ -165,7 +171,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -180,8 +186,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    increase(\n      karpenter_voluntary_disruption_decisions_total{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    )\n  ) by (decision, reason)\n)\n",
-               "interval": "1m",
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    increase(\n      karpenter_voluntary_disruption_decisions_total{\n        cluster=\"$cluster\", job=~\"$job\"\n      }[$__rate_interval]\n    )\n  ) by (decision, reason)\n)\n",
                "legendFormat": "{{ decision }} - {{ reason }}"
             }
          ],
@@ -190,21 +196,22 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The number of nodes eligible for voluntary disruption by reason.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
          },
          "gridPos": {
             "h": 6,
-            "w": 12,
-            "x": 12,
+            "w": 8,
+            "x": 8,
             "y": 7
          },
          "id": 5,
@@ -218,7 +225,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -233,8 +240,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    karpenter_voluntary_disruption_eligible_nodes{\n      cluster=\"$cluster\",\n      job=~\"$job\"\n    }\n  ) by (reason)\n)\n",
-               "interval": "1m",
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    karpenter_voluntary_disruption_eligible_nodes{\n      cluster=\"$cluster\", job=~\"$job\"\n    }\n  ) by (reason)\n)\n",
                "legendFormat": "{{ reason }}"
             }
          ],
@@ -243,22 +250,23 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The number of nodes disrupted by node pool, capacity type, and reason.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
          },
          "gridPos": {
             "h": 6,
-            "w": 24,
-            "x": 0,
-            "y": 13
+            "w": 8,
+            "x": 16,
+            "y": 7
          },
          "id": 6,
          "options": {
@@ -271,7 +279,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -286,8 +294,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    increase(\n      karpenter_nodeclaims_disrupted_total{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        nodepool=~\"$nodepool\"\n      }[$__rate_interval]\n    )\n  ) by (nodepool, capacity_type, reason)\n)\n",
-               "interval": "1m",
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    increase(\n      karpenter_nodeclaims_disrupted_total{\n        cluster=\"$cluster\", job=~\"$job\",\n        nodepool=~\"$nodepool\"\n      }[$__rate_interval]\n    )\n  ) by (nodepool, capacity_type, reason)\n)\n",
                "legendFormat": "{{ nodepool }} - {{ capacity_type }} - {{ reason }}"
             }
          ],
@@ -300,7 +308,7 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 19
+            "y": 13
          },
          "id": 7,
          "title": "Pod Activity",
@@ -308,13 +316,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The number of pods by phase.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
@@ -323,7 +332,7 @@
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 20
+            "y": 14
          },
          "id": 8,
          "options": {
@@ -336,7 +345,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -351,8 +360,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\",\n      job=~\"$job\"\n    }\n  ) by (phase)\n)\n",
-               "interval": "1m",
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\", job=~\"$job\"\n    }\n  ) by (phase)\n)\n",
                "legendFormat": "{{ phase }}"
             }
          ],
@@ -361,13 +370,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The duration for pods to start up.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "s"
             }
@@ -376,7 +386,7 @@
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 20
+            "y": 14
          },
          "id": 9,
          "options": {
@@ -389,7 +399,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Mean",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -404,7 +414,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max(\n  karpenter_pods_startup_duration_seconds{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    quantile=\"0.5\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "max(\n  karpenter_pods_startup_duration_seconds{\n    cluster=\"$cluster\", job=~\"$job\",\n    quantile=\"0.5\"\n  }\n)\n",
                "interval": "1m",
                "legendFormat": "P50"
             },
@@ -413,7 +424,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max(\n  karpenter_pods_startup_duration_seconds{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    quantile=\"0.95\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "max(\n  karpenter_pods_startup_duration_seconds{\n    cluster=\"$cluster\", job=~\"$job\",\n    quantile=\"0.95\"\n  }\n)\n",
                "interval": "1m",
                "legendFormat": "P95"
             },
@@ -422,7 +434,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max(\n  karpenter_pods_startup_duration_seconds{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    quantile=\"0.99\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "max(\n  karpenter_pods_startup_duration_seconds{\n    cluster=\"$cluster\", job=~\"$job\",\n    quantile=\"0.99\"\n  }\n)\n",
                "interval": "1m",
                "legendFormat": "P99"
             }

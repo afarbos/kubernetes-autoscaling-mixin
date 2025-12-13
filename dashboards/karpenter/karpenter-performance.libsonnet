@@ -1,741 +1,581 @@
+local mixinUtils = import 'github.com/adinhodovic/mixin-utils/utils.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+local util = import 'util.libsonnet';
 
 local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
 
-local variable = dashboard.variable;
-local datasource = variable.datasource;
-local query = variable.query;
-local prometheus = g.query.prometheus;
-
-local statPanel = g.panel.stat;
-local timeSeriesPanel = g.panel.timeSeries;
-
-// Stat
-local stOptions = statPanel.options;
-local stStandardOptions = statPanel.standardOptions;
-local stQueryOptions = statPanel.queryOptions;
-
-// Timeseries
-local tsOptions = timeSeriesPanel.options;
-local tsStandardOptions = timeSeriesPanel.standardOptions;
-local tsQueryOptions = timeSeriesPanel.queryOptions;
-local tsFieldConfig = timeSeriesPanel.fieldConfig;
-local tsCustom = tsFieldConfig.defaults.custom;
-local tsLegend = tsOptions.legend;
+// Stat panel helpers
+local stat = g.panel.stat;
+local stStandardOptions = stat.standardOptions;
 
 {
-  grafanaDashboards+:: std.prune({
+  grafanaDashboards+:: {
+    ['kubernetes-autoscaling-mixin-karpenter-perf.json']:
+      if !$._config.karpenter.enabled then {} else
 
-    local datasourceVariable =
-      datasource.new(
-        'datasource',
-        'prometheus',
-      ) +
-      datasource.generalOptions.withLabel('Data source') +
-      {
-        current: {
-          selected: true,
-          text: $._config.datasourceName,
-          value: $._config.datasourceName,
-        },
-      },
+        local defaultVariables = util.variables($._config);
 
-    local clusterVariable =
-      query.new(
-        $._config.clusterLabel,
-        'label_values(kube_pod_info{%(kubeStateMetricsSelector)s}, cluster)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Cluster') +
-      query.refresh.onLoad() +
-      query.refresh.onTime() +
-      (
-        if $._config.showMultiCluster
-        then query.generalOptions.showOnDashboard.withLabelAndValue()
-        else query.generalOptions.showOnDashboard.withNothing()
-      ),
+        local variables = [
+          defaultVariables.datasource,
+          defaultVariables.cluster,
+          defaultVariables.jobSimple,
+        ];
 
-    local jobVariable =
-      query.new(
-        'job',
-        'label_values(karpenter_nodes_allocatable{%(clusterLabel)s="$cluster"}, job)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Job') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+        local defaultFilters = util.filters($._config);
+        local queries = {
+          // Summary
+          clusterStateSynced: |||
+            sum(
+              karpenter_cluster_state_synced{
+                %(base)s
+              }
+            ) by (job)
+          ||| % defaultFilters,
 
-    local variables = [
-      datasourceVariable,
-      clusterVariable,
-      jobVariable,
-    ],
+          clusterStateNodeCount: |||
+            sum(
+              karpenter_cluster_state_node_count{
+                %(base)s
+              }
+            ) by (job)
+          ||| % defaultFilters,
 
-    local karpenterClusterStateSyncedQuery = |||
-      sum(
-        karpenter_cluster_state_synced{
-          %(clusterLabel)s="$cluster",
-          job=~"$job",
-        }
-      ) by (job)
-    ||| % $._config,
+          cloudProviderErrors: |||
+            round(
+              sum(
+                increase(
+                  karpenter_cloudprovider_errors_total{
+                    %(base)s
+                  }[$__rate_interval]
+                )
+              ) by (job, provider, controller, method, error)
+            )
+          ||| % defaultFilters,
 
-    local karpenterClusterStateSyncedStatPanel =
-      statPanel.new(
-        'Cluster State Synced',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          karpenterClusterStateSyncedQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('short') +
-      stStandardOptions.withUnit('short') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]) +
-      stStandardOptions.withMappings(
-        stStandardOptions.mapping.ValueMap.withType() +
-        stStandardOptions.mapping.ValueMap.withOptions(
-          {
-            '0': { text: 'No', color: 'red' },
-            '1': { text: 'Yes', color: 'green' },
-          }
-        )
-      ),
+          // Node Termination
+          nodeTerminationP50Duration: |||
+            max(
+              karpenter_nodes_termination_duration_seconds{
+                %(base)s,
+                quantile="0.5"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterClusterStateNodeCountQuery = |||
-      sum(
-        karpenter_cluster_state_node_count{
-          %(clusterLabel)s="$cluster",
-          job=~"$job",
-        }
-      ) by (job)
-    ||| % $._config,
+          nodeTerminationP95Duration: |||
+            max(
+              karpenter_nodes_termination_duration_seconds{
+                %(base)s,
+                quantile="0.95"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterClusterStateNodeCountStatPanel =
-      statPanel.new(
-        'Cluster State Node Count',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          karpenterClusterStateNodeCountQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('short') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
+          nodeTerminationP99Duration: |||
+            max(
+              karpenter_nodes_termination_duration_seconds{
+                %(base)s,
+                quantile="0.99"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterCloudProviderErrorsQuery = |||
-      round(
-        sum(
-          increase(
-            karpenter_cloudprovider_errors_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job"
-            }[$__rate_interval]
-          )
-        ) by (job, provider, controller, method, error)
-      )
-    ||| % $._config,
+          // Pod Startup
+          podsStartupP50Duration: |||
+            max(
+              karpenter_pods_startup_duration_seconds{
+                %(base)s,
+                quantile="0.5"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterCloudProviderErrorsTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Cloud Provider Errors',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterCloudProviderErrorsQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ provider }} - {{ controller }} - {{ method }} - {{ error }}'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          podsStartupP95Duration: |||
+            max(
+              karpenter_pods_startup_duration_seconds{
+                %(base)s,
+                quantile="0.95"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodeTerminationP50DurationQuery = |||
-      max(
-        karpenter_nodes_termination_duration_seconds{
-          %(clusterLabel)s="$cluster",
-          job=~"$job",
-          quantile="0.5"
-        }
-      )
-    ||| % $._config,
-    local karpenterNodeTerminationP95DurationQuery = std.strReplace(karpenterNodeTerminationP50DurationQuery, '0.5', '0.95'),
-    local karpenterNodeTerminationP99DurationQuery = std.strReplace(karpenterNodeTerminationP50DurationQuery, '0.5', '0.99'),
+          podsStartupP99Duration: |||
+            max(
+              karpenter_pods_startup_duration_seconds{
+                %(base)s,
+                quantile="0.99"
+              }
+            )
+          ||| % defaultFilters,
 
-    local karpenterPodsStartupP50DurationQuery = |||
-      max(
-        karpenter_pods_startup_duration_seconds{
-          %(clusterLabel)s="$cluster",
-          job=~"$job",
-          quantile="0.5"
-        }
-      )
-    ||| % $._config,
-    local karpenterPodsStartupP95DurationQuery = std.strReplace(karpenterPodsStartupP50DurationQuery, '0.5', '0.95'),
-    local karpenterPodsStartupP99DurationQuery = std.strReplace(karpenterPodsStartupP50DurationQuery, '0.5', '0.99'),
+          // Interruption Queue
+          interruptionReceivedMessages: |||
+            sum(
+              increase(
+                karpenter_interruption_received_messages_total{
+                  %(base)s
+                }[$__rate_interval]
+              )
+            ) by (job, message_type)
+          ||| % defaultFilters,
 
-    local karpenterPodStartupDurationTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Pods Startup Duration',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterPodsStartupP50DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P50'
-          ) +
-          prometheus.withInterval('1m'),
-          prometheus.new(
-            '$datasource',
-            karpenterPodsStartupP95DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P95'
-          ) +
-          prometheus.withInterval('1m'),
-          prometheus.new(
-            '$datasource',
-            karpenterPodsStartupP99DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P99'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          interruptionDeletedMessages: |||
+            sum(
+              increase(
+                karpenter_interruption_deleted_messages_total{
+                  %(base)s
+                }[$__rate_interval]
+              )
+            ) by (job)
+          ||| % defaultFilters,
 
-    local karpenterInterruptionReceivedMessagesQuery = |||
-      sum(
-        increase(
-          karpenter_interruption_received_messages_total{
-            %(clusterLabel)s="$cluster",
-            job=~"$job"
-          }[$__rate_interval]
-        )
-      ) by (job, message_type)
-    ||| % $._config,
+          interuptionDurationP50: |||
+            histogram_quantile(0.50,
+              sum(
+                irate(
+                  karpenter_interruption_message_queue_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterInterruptionReceivedMessagesTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Interruption Received Messages',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterInterruptionReceivedMessagesQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ message_type }}'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          interuptionDurationP95: |||
+            histogram_quantile(0.95,
+              sum(
+                irate(
+                  karpenter_interruption_message_queue_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
+          interuptionDurationP99: |||
+            histogram_quantile(0.99,
+              sum(
+                irate(
+                  karpenter_interruption_message_queue_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterInterruptionDeletedMessagesQuery = |||
-      sum(
-        increase(
-          karpenter_interruption_deleted_messages_total{
-            %(clusterLabel)s="$cluster",
-            job=~"$job"
-          }[$__rate_interval]
-        )
-      ) by (job)
-    ||| % $._config,
+          // Work Queue
+          workQueueDepth: |||
+            sum(
+              karpenter_workqueue_depth{
+                %(base)s
+              }
+            ) by (job)
+          ||| % defaultFilters,
 
-    local karpenterInterruptionDeletedMessagesTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Interruption Deleted Messages',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterInterruptionDeletedMessagesQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'Deleted Messages'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          workQueueInQueueDurationP50: |||
+            histogram_quantile(0.50,
+              sum(
+                irate(
+                  karpenter_workqueue_queue_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterInteruptionDurationP50Query = |||
-      histogram_quantile(0.50,
-        sum(
-          irate(
-            karpenter_interruption_message_queue_duration_seconds_bucket{
-              %(clusterLabel)s="$cluster",
-              job=~"$job"
-            }[$__rate_interval]
-          ) > 0
-        ) by (job, le)
-      )
-    ||| % $._config,
-    local karpenterInteruptionDurationP95Query = std.strReplace(karpenterInteruptionDurationP50Query, '0.50', '0.95'),
-    local karpenterInteruptionDurationP99Query = std.strReplace(karpenterInteruptionDurationP50Query, '0.50', '0.99'),
+          workQueueInQueueDurationP95: |||
+            histogram_quantile(0.95,
+              sum(
+                irate(
+                  karpenter_workqueue_queue_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterInteruptionDurationTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Interruption Duration',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterInteruptionDurationP50Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P50'
-          ),
-          prometheus.new(
-            '$datasource',
-            karpenterInteruptionDurationP95Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P95'
-          ),
-          prometheus.new(
-            '$datasource',
-            karpenterInteruptionDurationP99Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P99'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls(false),
+          workQueueInQueueDurationP99: |||
+            histogram_quantile(0.99,
+              sum(
+                irate(
+                  karpenter_workqueue_queue_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterNodeTerminationDurationTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Node Termination Duration',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterNodeTerminationP50DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P50'
-          ) +
-          prometheus.withInterval('1m'),
-          prometheus.new(
-            '$datasource',
-            karpenterNodeTerminationP95DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P95'
-          ) +
-          prometheus.withInterval('1m'),
-          prometheus.new(
-            '$datasource',
-            karpenterNodeTerminationP99DurationQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'P99'
-          ) +
-          prometheus.withInterval('1m'),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          workQueueWorkDurationP50: |||
+            histogram_quantile(0.50,
+              sum(
+                irate(
+                  karpenter_workqueue_work_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterWorkQueueDepthQuery = |||
-      sum(
-        karpenter_workqueue_depth{
-          %(clusterLabel)s="$cluster",
-          job=~"$job"
-        }
-      ) by (job)
-    ||| % $._config,
+          workQueueWorkDurationP95: |||
+            histogram_quantile(0.95,
+              sum(
+                irate(
+                  karpenter_workqueue_work_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterWorkQueueDepthTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Work Queue Depth',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueDepthQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'Queue Depth'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withSpanNulls(false),
+          workQueueWorkDurationP99: |||
+            histogram_quantile(0.99,
+              sum(
+                irate(
+                  karpenter_workqueue_work_duration_seconds_bucket{
+                    %(base)s
+                  }[$__rate_interval]
+                ) > 0
+              ) by (job, le)
+            )
+          ||| % defaultFilters,
 
-    local karpenterWorkQueueInQueueDurationP50Query = |||
-      histogram_quantile(0.50,
-        sum(
-          irate(
-            karpenter_workqueue_queue_duration_seconds_bucket{
-              %(clusterLabel)s="$cluster",
-              job=~"$job"
-            }[$__rate_interval]
-          ) > 0
-        ) by (job, le)
-      )
-    ||| % $._config,
-    local karpenterWorkQueueInQueueDurationP95Query = std.strReplace(karpenterWorkQueueInQueueDurationP50Query, '0.50', '0.95'),
-    local karpenterWorkQueueInQueueDurationP99Query = std.strReplace(karpenterWorkQueueInQueueDurationP50Query, '0.50', '0.99'),
+          // Controller
+          controllerReconcile: |||
+            sum(
+              irate(
+                karpenter_controller_runtime_reconcile_time_seconds_sum{
+                  %(base)s
+                }[$__rate_interval]
+              )
+            ) by (job, controller, result)
+            /
+            sum(
+              irate(
+                karpenter_controller_runtime_reconcile_time_seconds_count{
+                  %(base)s
+                }[$__rate_interval]
+              )
+            ) by (job, controller, result)
+          ||| % defaultFilters,
+        };
 
-    local karpenterWorkQueueInQueueDurationTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Work Queue In Queue Duration',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueInQueueDurationP50Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P50'
-          ),
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueInQueueDurationP95Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P95'
-          ),
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueInQueueDurationP99Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P99'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls(false),
+        local panels = {
+          // Summary
+          clusterStateSynced:
+            mixinUtils.dashboards.statPanel(
+              'Cluster State Synced',
+              'short',
+              queries.clusterStateSynced,
+              description='Indicates whether the cluster state is synced.',
+              steps=[
+                stStandardOptions.threshold.step.withValue(0) +
+                stStandardOptions.threshold.step.withColor('red'),
+                stStandardOptions.threshold.step.withValue(0.1) +
+                stStandardOptions.threshold.step.withColor('green'),
+              ],
+              mappings=[
+                stStandardOptions.mapping.ValueMap.withType() +
+                stStandardOptions.mapping.ValueMap.withOptions(
+                  {
+                    '0': { text: 'No', color: 'red' },
+                    '1': { text: 'Yes', color: 'green' },
+                  }
+                ),
+              ],
+            ),
 
-    local karpenterWorkQueueWorkDurationP50Query = |||
-      histogram_quantile(0.50,
-        sum(
-          irate(
-            karpenter_workqueue_work_duration_seconds_bucket{
-              %(clusterLabel)s="$cluster",
-              job=~"$job"
-            }[$__rate_interval]
-          ) > 0
-        ) by (job, le)
-      )
-    ||| % $._config,
-    local karpenterWorkQueueWorkDurationP95Query = std.strReplace(karpenterWorkQueueWorkDurationP50Query, '0.50', '0.95'),
-    local karpenterWorkQueueWorkDurationP99Query = std.strReplace(karpenterWorkQueueWorkDurationP50Query, '0.50', '0.99'),
+          clusterStateNodeCount:
+            mixinUtils.dashboards.statPanel(
+              'Cluster State Node Count',
+              'short',
+              queries.clusterStateNodeCount,
+              description='The number of nodes in the cluster state.',
+              steps=[
+                stStandardOptions.threshold.step.withValue(0) +
+                stStandardOptions.threshold.step.withColor('red'),
+                stStandardOptions.threshold.step.withValue(0.1) +
+                stStandardOptions.threshold.step.withColor('green'),
+              ],
+            ),
 
-    local karpenterWorkQueueWorkDurationTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Work Queue Work Duration',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueWorkDurationP50Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P50'
-          ),
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueWorkDurationP95Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P95'
-          ),
-          prometheus.new(
-            '$datasource',
-            karpenterWorkQueueWorkDurationP99Query,
-          ) +
-          prometheus.withLegendFormat(
-            'P99'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls(false),
+          cloudProviderErrors:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Cloud Provider Errors',
+              'short',
+              queries.cloudProviderErrors,
+              '{{ provider }} - {{ controller }} - {{ method }} - {{ error }}',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The number of cloud provider errors over time.',
+            ),
 
-    local karpenterControllerReconcileQuery = |||
-      sum(
-        rate(
-          controller_runtime_reconcile_total{
-            %(clusterLabel)s="$cluster",
-            job=~"$job"
-          }[$__rate_interval]
-        )
-      ) by (job, controller) > 0
-    ||| % $._config,
+          // Node Termination & Pod Startup
+          nodeTerminationDuration:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Node Termination Duration',
+              's',
+              [
+                {
+                  expr: queries.nodeTerminationP50Duration,
+                  legend: 'P50',
+                  interval: '1m',
+                },
+                {
+                  expr: queries.nodeTerminationP95Duration,
+                  legend: 'P95',
+                  interval: '1m',
+                },
+                {
+                  expr: queries.nodeTerminationP99Duration,
+                  legend: 'P99',
+                  interval: '1m',
+                },
+              ],
+              calcs=['mean', 'max'],
+              description='The duration to terminate nodes.',
+            ),
 
-    local karpenterControllerReconcileTimeSeriesPanel =
-      timeSeriesPanel.new(
-        title='Controller Reconcile',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            karpenterControllerReconcileQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ controller }}'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('reqps') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.stacking.withMode('value') +
-      tsCustom.withFillOpacity(100) +
-      tsCustom.withSpanNulls(false),
+          podStartupDuration:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Pods Startup Duration',
+              's',
+              [
+                {
+                  expr: queries.podsStartupP50Duration,
+                  legend: 'P50',
+                  interval: '1m',
+                },
+                {
+                  expr: queries.podsStartupP95Duration,
+                  legend: 'P95',
+                  interval: '1m',
+                },
+                {
+                  expr: queries.podsStartupP99Duration,
+                  legend: 'P99',
+                  interval: '1m',
+                },
+              ],
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The duration for pods to start up.',
+            ),
 
-    local karpenterSummaryRow =
-      row.new(
-        title='Summary',
-      ),
+          // Interruption Queue
+          interruptionReceivedMessages:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Interruption Received Messages',
+              'short',
+              queries.interruptionReceivedMessages,
+              '{{ message_type }}',
+              calcs=['lastNotNull', 'mean'],
+              description='The number of interruption messages received.',
+            ),
 
-    local karpenterInterruptionQueueRow =
-      row.new(
-        title='Interruption Queue',
-      ),
+          interruptionDeletedMessages:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Interruption Deleted Messages',
+              'short',
+              queries.interruptionDeletedMessages,
+              'Deleted Messages',
+              calcs=['lastNotNull', 'mean'],
+              description='The number of interruption messages deleted.',
+            ),
 
-    local karpenterWorkQueueRow =
-      row.new(
-        title='Work Queue',
-      ),
+          interuptionDuration:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Interruption Duration',
+              's',
+              [
+                {
+                  expr: queries.interuptionDurationP50,
+                  legend: 'P50',
+                },
+                {
+                  expr: queries.interuptionDurationP95,
+                  legend: 'P95',
+                },
+                {
+                  expr: queries.interuptionDurationP99,
+                  legend: 'P99',
+                },
+              ],
+              calcs=['mean', 'max'],
+              description='The duration for interruption message processing.',
+            ),
 
-    local karpenterControllerRow =
-      row.new(
-        title='Controller',
-      ),
+          // Work Queue
+          workQueueDepth:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Work Queue Depth',
+              'short',
+              queries.workQueueDepth,
+              'Queue Depth',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The depth of the work queue.',
+            ),
 
-    'kubernetes-autoscaling-mixin-karpenter-perf.json': if $._config.karpenter.enabled then
-      $._config.bypassDashboardValidation +
-      dashboard.new(
-        'Kubernetes / Autoscaling / Karpenter / Performance',
-      ) +
-      dashboard.withDescription('A dashboard that monitors Karpenter and focuses on Karpenter performance. It is created using the [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).') +
-      dashboard.withUid($._config.karpenterPerformanceDashboardUid) +
-      dashboard.withTags($._config.tags + ['karpenter']) +
-      dashboard.withTimezone('utc') +
-      dashboard.withEditable(true) +
-      dashboard.time.withFrom('now-24h') +
-      dashboard.time.withTo('now') +
-      dashboard.withVariables(variables) +
-      dashboard.withLinks(
-        [
-          dashboard.link.dashboards.new('Kubernetes / Autoscaling', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true) +
-          dashboard.link.link.options.withAsDropdown(true) +
-          dashboard.link.link.options.withIncludeVars(true) +
-          dashboard.link.link.options.withKeepTime(true),
-        ]
-      ) +
-      dashboard.withPanels(
-        [
-          karpenterSummaryRow +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(0) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-          karpenterClusterStateSyncedStatPanel +
-          statPanel.gridPos.withX(0) +
-          statPanel.gridPos.withY(1) +
-          statPanel.gridPos.withW(6) +
-          statPanel.gridPos.withH(3),
-          karpenterClusterStateNodeCountStatPanel +
-          statPanel.gridPos.withX(0) +
-          statPanel.gridPos.withY(4) +
-          statPanel.gridPos.withW(6) +
-          statPanel.gridPos.withH(3),
-          karpenterCloudProviderErrorsTimeSeriesPanel +
-          timeSeriesPanel.gridPos.withX(6) +
-          timeSeriesPanel.gridPos.withY(1) +
-          timeSeriesPanel.gridPos.withW(18) +
-          timeSeriesPanel.gridPos.withH(6),
-        ] +
-        grid.makeGrid(
+          workQueueInQueueDuration:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Work Queue In Queue Duration',
+              's',
+              [
+                {
+                  expr: queries.workQueueInQueueDurationP50,
+                  legend: 'P50',
+                },
+                {
+                  expr: queries.workQueueInQueueDurationP95,
+                  legend: 'P95',
+                },
+                {
+                  expr: queries.workQueueInQueueDurationP99,
+                  legend: 'P99',
+                },
+              ],
+              calcs=['mean', 'max'],
+              description='The duration items spend in the work queue.',
+            ),
+
+          workQueueWorkDuration:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Work Queue Work Duration',
+              's',
+              [
+                {
+                  expr: queries.workQueueWorkDurationP50,
+                  legend: 'P50',
+                },
+                {
+                  expr: queries.workQueueWorkDurationP95,
+                  legend: 'P95',
+                },
+                {
+                  expr: queries.workQueueWorkDurationP99,
+                  legend: 'P99',
+                },
+              ],
+              calcs=['mean', 'max'],
+              description='The duration to process work queue items.',
+            ),
+
+          // Controller
+          controllerReconcile:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Controller Reconcile Duration',
+              's',
+              queries.controllerReconcile,
+              '{{ controller }} - {{ result }}',
+              calcs=['lastNotNull', 'mean', 'max'],
+              description='The average duration of controller reconciliation.',
+            ),
+        };
+
+        local rows =
           [
-            karpenterNodeTerminationDurationTimeSeriesPanel,
-            karpenterPodStartupDurationTimeSeriesPanel,
-          ],
-          panelWidth=12,
-          panelHeight=6,
-          startY=7
+            row.new('Summary') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(0) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.clusterStateSynced,
+              panels.clusterStateNodeCount,
+            ],
+            panelWidth=12,
+            panelHeight=4,
+            startY=1
+          ) +
+          grid.makeGrid(
+            [
+              panels.cloudProviderErrors,
+              panels.nodeTerminationDuration,
+              panels.podStartupDuration,
+            ],
+            panelWidth=8,
+            panelHeight=6,
+            startY=5
+          ) +
+          [
+            row.new('Interruption Queue') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(11) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.interruptionReceivedMessages,
+              panels.interruptionDeletedMessages,
+              panels.interuptionDuration,
+            ],
+            panelWidth=8,
+            panelHeight=6,
+            startY=12
+          ) +
+          [
+            row.new('Work Queue') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(18) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.workQueueDepth,
+              panels.workQueueInQueueDuration,
+              panels.workQueueWorkDuration,
+            ],
+            panelWidth=8,
+            panelHeight=6,
+            startY=19
+          ) +
+          [
+            row.new('Controller') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(25) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.controllerReconcile,
+            ],
+            panelWidth=24,
+            panelHeight=6,
+            startY=26
+          );
+
+        mixinUtils.dashboards.bypassDashboardValidation +
+        dashboard.new(
+          'Kubernetes / Autoscaling / Karpenter / Performance',
         ) +
-        [
-          karpenterInterruptionQueueRow +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(13) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            karpenterInterruptionReceivedMessagesTimeSeriesPanel,
-            karpenterInterruptionDeletedMessagesTimeSeriesPanel,
-            karpenterInteruptionDurationTimeSeriesPanel,
-          ],
-          panelWidth=8,
-          panelHeight=6,
-          startY=14
+        dashboard.withDescription('A dashboard that monitors Karpenter performance metrics. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
+        dashboard.withUid($._config.karpenterPerformanceDashboardUid) +
+        dashboard.withTags($._config.tags + ['karpenter']) +
+        dashboard.withTimezone('utc') +
+        dashboard.withEditable(true) +
+        dashboard.time.withFrom('now-6h') +
+        dashboard.time.withTo('now') +
+        dashboard.withVariables(variables) +
+        dashboard.withLinks(
+          mixinUtils.dashboards.dashboardLinks('Kubernetes / Autoscaling', $._config, dropdown=true)
         ) +
-        [
-          karpenterWorkQueueRow +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(20) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            karpenterWorkQueueDepthTimeSeriesPanel,
-            karpenterWorkQueueInQueueDurationTimeSeriesPanel,
-            karpenterWorkQueueWorkDurationTimeSeriesPanel,
-          ],
-          panelWidth=8,
-          panelHeight=6,
-          startY=21
+        dashboard.withPanels(
+          rows
         ) +
-        [
-          karpenterControllerRow +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(27) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            karpenterControllerReconcileTimeSeriesPanel,
-          ],
-          panelWidth=24,
-          panelHeight=6,
-          startY=28
+        dashboard.withAnnotations(
+          mixinUtils.dashboards.annotations($._config, defaultFilters)
         ),
-      ) +
-      if $._config.annotation.enabled then
-        dashboard.withAnnotations($._config.customAnnotation)
-      else {},
-  }) + if $._config.karpenter.enabled then {
-    'kubernetes-autoscaling-mixin-karpenter-perf.json'+: $._config.bypassDashboardValidation,
-  } else {},
+  },
 }
+

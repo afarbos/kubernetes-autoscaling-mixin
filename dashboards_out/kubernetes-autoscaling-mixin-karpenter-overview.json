@@ -1,12 +1,15 @@
 {
    "__inputs": [ ],
    "__requires": [ ],
-   "description": "A dashboard that monitors Karpenter and focuses on giving a overview for Karpenter. It is created using the [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).",
+   "annotations": {
+      "list": [ ]
+   },
+   "description": "A dashboard that monitors Karpenter and focuses on giving an overview for Karpenter. The dashboards were generated using [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin). Open issues and create feature requests in the repository.",
    "editable": true,
    "links": [
       {
          "asDropdown": true,
-         "includeVars": true,
+         "includeVars": false,
          "keepTime": true,
          "tags": [
             "kubernetes",
@@ -33,13 +36,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total CPU allocatable and requested across all Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "short"
             }
@@ -61,7 +65,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Last *",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -76,7 +80,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n)\n",
                "legendFormat": "Allocatable"
             },
             {
@@ -84,7 +89,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"cpu\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"cpu\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"cpu\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"cpu\"\n  }\n)\n",
                "legendFormat": "Requested"
             }
          ],
@@ -93,13 +99,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total memory allocatable and requested across all Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "bytes"
             }
@@ -121,7 +128,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Last *",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -136,7 +143,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n)\n",
                "legendFormat": "Allocatable"
             },
             {
@@ -144,7 +152,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"memory\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"memory\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n)\n",
+               "exemplar": false,
+               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"memory\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"memory\"\n  }\n)\n",
                "legendFormat": "Requested"
             }
          ],
@@ -165,20 +174,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total number of Karpenter node pools.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -193,20 +200,18 @@
          },
          "id": 5,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "count(\n  count(\n    karpenter_nodepools_limit{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n    }\n  ) by (nodepool)\n)\n"
+               "expr": "count(\n  count(\n    karpenter_nodepools_limit{\n      cluster=\"$cluster\", job=~\"$job\"\n    }\n  ) by (nodepool)\n)\n"
             }
          ],
          "title": "Node Pools",
@@ -214,20 +219,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total number of Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -242,20 +245,18 @@
          },
          "id": 6,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "count(\n  count(\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  ) by (node_name)\n)\n"
+               "expr": "count(\n  count(\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  ) by (node_name)\n)\n"
             }
          ],
          "title": "Nodes",
@@ -263,20 +264,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total CPU usage across all Karpenter node pools.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -291,20 +290,18 @@
          },
          "id": 7,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n)\n"
             }
          ],
          "title": "Node Pool CPU Usage",
@@ -312,20 +309,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total memory usage across all Karpenter node pools.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -340,20 +335,18 @@
          },
          "id": 8,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n)\n"
             }
          ],
          "title": "Node Pool Memory Usage",
@@ -361,20 +354,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total CPU limits across all Karpenter node pools.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -389,20 +380,18 @@
          },
          "id": 9,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n)\n"
             }
          ],
          "title": "Node Pool CPU Limits",
@@ -410,20 +399,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total memory limits across all Karpenter node pools.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -438,20 +425,18 @@
          },
          "id": 10,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n)\n"
             }
          ],
          "title": "Node Pool Memory Limits",
@@ -459,13 +444,14 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The percentage of node pool usage relative to limits.",
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "spanNulls": false
+                  "fillOpacity": 10
                },
                "unit": "percent"
             }
@@ -487,7 +473,7 @@
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "Last *",
+               "sortBy": "LastNotNull",
                "sortDesc": true
             },
             "tooltip": {
@@ -502,7 +488,8 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n  }\n) by (nodepool, resource_type)\n/\nsum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n  }\n) by (nodepool, resource_type) * 100\n",
+               "exemplar": false,
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\"\n  }\n) by (nodepool, resource_type)\n/\nsum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\"\n  }\n) by (nodepool, resource_type) * 100\n",
                "legendFormat": "{{ nodepool }} / {{ resource_type }}"
             }
          ],
@@ -511,8 +498,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by node pool.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -522,17 +516,21 @@
          },
          "id": 12,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -541,7 +539,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (nodepool) (\n  count by (node_name, nodepool) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (nodepool) (\n  count by (node_name, nodepool) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ nodepool }}"
             }
@@ -551,8 +549,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by instance type.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -562,17 +567,21 @@
          },
          "id": 13,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -581,7 +590,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (instance_type) (\n  count by (node_name, instance_type) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (instance_type) (\n  count by (node_name, instance_type) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ instance_type }}"
             }
@@ -591,8 +600,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by capacity type.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -602,17 +618,21 @@
          },
          "id": 14,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -621,7 +641,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (capacity_type) (\n  count by (node_name, capacity_type) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (capacity_type) (\n  count by (node_name, capacity_type) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ capacity_type }}"
             }
@@ -631,8 +651,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by region.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -642,17 +669,21 @@
          },
          "id": 15,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -661,7 +692,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (region) (\n  count by (node_name, region) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (region) (\n  count by (node_name, region) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ region }}"
             }
@@ -671,8 +702,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by zone.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -682,17 +720,21 @@
          },
          "id": 16,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -701,7 +743,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (zone) (\n  count by (node_name, zone) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      nodepool=~\"$nodepool\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (zone) (\n  count by (node_name, zone) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ zone }}"
             }
@@ -711,8 +753,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by architecture.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -722,17 +771,21 @@
          },
          "id": 17,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -741,7 +794,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (arch) (\n  count by (node_name, arch) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      nodepool=~\"$nodepool\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (arch) (\n  count by (node_name, arch) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ arch }}"
             }
@@ -751,8 +804,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of nodes by operating system.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -762,17 +822,21 @@
          },
          "id": 18,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -781,7 +845,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "count by (os) (\n  count by (node_name, os) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  )\n)\n",
+               "expr": "count by (os) (\n  count by (node_name, os) (\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\"\n    }\n  )\n)\n",
                "instant": true,
                "legendFormat": "{{ os }}"
             }
@@ -803,20 +867,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total CPU requests for all pods on Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -831,20 +893,18 @@
          },
          "id": 20,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"cpu\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"cpu\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"cpu\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"cpu\"\n  }\n)\n"
             }
          ],
          "title": "Pod CPU Requests",
@@ -852,20 +912,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total memory requests for all pods on Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -880,20 +938,18 @@
          },
          "id": 21,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"memory\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"memory\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodes_total_pod_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"memory\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_requests{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"memory\"\n  }\n)\n"
             }
          ],
          "title": "Pod Memory Requests",
@@ -901,20 +957,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total CPU limits for all pods on Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -929,20 +983,18 @@
          },
          "id": 22,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodes_total_pod_limits{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"cpu\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_limits{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"cpu\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodes_total_pod_limits{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"cpu\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_limits{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"cpu\"\n  }\n)\n"
             }
          ],
          "title": "Pod CPU Limits",
@@ -950,20 +1002,18 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
          },
+         "description": "The total memory limits for all pods on Karpenter nodes.",
          "fieldConfig": {
             "defaults": {
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
                         "color": "green",
-                        "value": 0.10000000000000001
+                        "value": 0
                      }
                   ]
                },
@@ -978,20 +1028,18 @@
          },
          "id": 23,
          "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
          },
          "pluginVersion": "v11.4.0",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "$datasource"
+                  "uid": "${datasource}"
                },
-               "expr": "sum(\n  karpenter_nodes_total_pod_limits{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"memory\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_limits{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    resource_type=\"memory\",\n    region=~\"$region\",\n    zone=~\"$zone\",\n    arch=~\"$arch\",\n    os=~\"$os\",\n    instance_type=~\"$instance_type\",\n    capacity_type=~\"$capacity_type\",\n    nodepool=~\"$nodepool\"\n  }\n)\n"
+               "expr": "sum(\n  karpenter_nodes_total_pod_limits{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"memory\"\n  }\n) +\nsum(\n  karpenter_nodes_total_daemon_limits{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n    resource_type=\"memory\"\n  }\n)\n"
             }
          ],
          "title": "Pod Memory Limits",
@@ -999,8 +1047,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of pods by node pool.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -1010,17 +1065,21 @@
          },
          "id": 24,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -1029,7 +1088,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      nodepool=~\"$nodepool\"\n    }\n) by (nodepool)\n",
+               "expr": "sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\", job=~\"$job\",\n      nodepool=~\"$nodepool\"\n    }\n) by (nodepool)\n",
                "instant": true,
                "legendFormat": "{{ nodepool }}"
             }
@@ -1039,8 +1098,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of pods by instance type.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -1050,17 +1116,21 @@
          },
          "id": 25,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -1069,7 +1139,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      nodepool=~\"$nodepool\"\n    }\n) by (instance_type)\n",
+               "expr": "sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\", job=~\"$job\",\n      nodepool=~\"$nodepool\"\n    }\n) by (instance_type)\n",
                "instant": true,
                "legendFormat": "{{ instance_type }}"
             }
@@ -1079,8 +1149,15 @@
       },
       {
          "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "The distribution of pods by capacity type.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 5,
@@ -1090,17 +1167,21 @@
          },
          "id": 26,
          "options": {
+            "displayLabels": [
+               "percent"
+            ],
             "legend": {
-               "asTable": true,
                "displayMode": "table",
                "placement": "right",
-               "sortDesc": true,
+               "showLegend": true,
                "values": [
-                  "value",
                   "percent"
                ]
             },
-            "pieType": "pie"
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -1109,7 +1190,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      nodepool=~\"$nodepool\"\n    }\n) by (capacity_type)\n",
+               "expr": "sum(\n    karpenter_pods_state{\n      cluster=\"$cluster\", job=~\"$job\",\n      nodepool=~\"$nodepool\"\n    }\n) by (capacity_type)\n",
                "instant": true,
                "legendFormat": "{{ capacity_type }}"
             }
@@ -1225,7 +1306,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1234,7 +1315,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodes_allocatable{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodes_allocatable{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1243,7 +1324,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"cpu\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1252,7 +1333,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1261,7 +1342,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodes_allocatable{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodes_allocatable{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1270,7 +1351,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"memory\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1279,7 +1360,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"nodes\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"nodes\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1288,7 +1369,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"nodes\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"nodes\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1297,7 +1378,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"pods\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"pods\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1306,7 +1387,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"pods\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"pods\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1315,7 +1396,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"ephemeral_storage\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_usage{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"ephemeral_storage\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             },
@@ -1324,7 +1405,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\",\n    job=~\"$job\",\n    nodepool=~\"$nodepool\",\n    resource_type=\"ephemeral_storage\"\n  }\n) by (job, namespace, nodepool)\n",
+               "expr": "sum(\n  karpenter_nodepools_limit{\n    cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\",\n    resource_type=\"ephemeral_storage\"\n  }\n) by (job, namespace, nodepool)\n",
                "format": "table",
                "instant": true
             }
@@ -1523,7 +1604,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "(\n  (\n    sum(\n      karpenter_nodes_total_pod_requests{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        resource_type=\"cpu\",\n        region=~\"$region\",\n        zone=~\"$zone\",\n        arch=~\"$arch\",\n        os=~\"$os\",\n        instance_type=~\"$instance_type\",\n        capacity_type=~\"$capacity_type\",\n        nodepool=~\"$nodepool\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n    +\n    sum(\n      karpenter_nodes_total_daemon_requests{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        resource_type=\"cpu\",\n        region=~\"$region\",\n        zone=~\"$zone\",\n        arch=~\"$arch\",\n        os=~\"$os\",\n        instance_type=~\"$instance_type\",\n        capacity_type=~\"$capacity_type\",\n        nodepool=~\"$nodepool\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n  ) /\n  sum(\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      resource_type=\"cpu\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n) * 100\n",
+               "expr": "(\n  (\n    sum(\n      karpenter_nodes_total_pod_requests{\n        cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n        resource_type=\"cpu\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n    +\n    sum(\n      karpenter_nodes_total_daemon_requests{\n        cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n        resource_type=\"cpu\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n  ) /\n  sum(\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n      resource_type=\"cpu\"\n    }\n  ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n) * 100\n",
                "format": "table",
                "instant": true
             },
@@ -1532,7 +1613,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "(\n  (\n    sum(\n      karpenter_nodes_total_pod_requests{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        resource_type=\"memory\",\n        region=~\"$region\",\n        zone=~\"$zone\",\n        arch=~\"$arch\",\n        os=~\"$os\",\n        instance_type=~\"$instance_type\",\n        capacity_type=~\"$capacity_type\",\n        nodepool=~\"$nodepool\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_memory, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n    +\n    sum(\n      karpenter_nodes_total_daemon_requests{\n        cluster=\"$cluster\",\n        job=~\"$job\",\n        resource_type=\"memory\",\n        region=~\"$region\",\n        zone=~\"$zone\",\n        arch=~\"$arch\",\n        os=~\"$os\",\n        instance_type=~\"$instance_type\",\n        capacity_type=~\"$capacity_type\",\n        nodepool=~\"$nodepool\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_memory, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n  ) /\n  sum(\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\",\n      job=~\"$job\",\n      resource_type=\"memory\",\n      region=~\"$region\",\n      zone=~\"$zone\",\n      arch=~\"$arch\",\n      os=~\"$os\",\n      instance_type=~\"$instance_type\",\n      capacity_type=~\"$capacity_type\",\n      nodepool=~\"$nodepool\"\n    }\n  ) by (node_name, nodepool, instance_type, instance_memory, instance_memory, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n) * 100\n",
+               "expr": "(\n  (\n    sum(\n      karpenter_nodes_total_pod_requests{\n        cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n        resource_type=\"memory\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n    +\n    sum(\n      karpenter_nodes_total_daemon_requests{\n        cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n        resource_type=\"memory\"\n      }\n    ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n  ) /\n  sum(\n    karpenter_nodes_allocatable{\n      cluster=\"$cluster\", job=~\"$job\", nodepool=~\"$nodepool\", region=~\"$region\", zone=~\"$zone\", arch=~\"$arch\", os=~\"$os\", instance_type=~\"$instance_type\", capacity_type=~\"$capacity_type\",\n      resource_type=\"memory\"\n    }\n  ) by (node_name, nodepool, instance_type, instance_memory, instance_cpu, instance_network_bandwidth, region, zone, os, capacity_type, arch)\n) * 100\n",
                "format": "table",
                "instant": true
             }
