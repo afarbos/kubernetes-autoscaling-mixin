@@ -46,7 +46,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -99,7 +100,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -152,7 +154,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -206,7 +209,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -260,7 +264,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -326,7 +331,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -380,7 +386,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -511,5 +518,5 @@
    },
    "timezone": "utc",
    "title": "Kubernetes / Autoscaling / Karpenter / Activity",
-   "uid": "kubernetes-autoscaling-mixin-kact-jkwq"
+   "uid": "kubernetes-autoscaling-mixin-kact-jkwq1j"
 }

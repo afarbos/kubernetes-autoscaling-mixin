@@ -28,8 +28,8 @@ local tsOverride = tsStandardOptions.override;
       local variables = [
         defaultVariables.datasource,
         defaultVariables.cluster,
-        defaultVariables.job,
-        defaultVariables.namespace,
+        defaultVariables.pdbJob,
+        defaultVariables.pdbNamespace,
         defaultVariables.pdb,
       ];
 
@@ -241,29 +241,30 @@ local tsOverride = tsStandardOptions.override;
               },
             ],
             description='Status metrics for the selected PDB over time.',
-          ) +
-          tsStandardOptions.withOverrides([
-            tsOverride.byName.new('Currently Healthy') +
-            tsOverride.byName.withPropertiesFromOptions(
-              tsStandardOptions.color.withMode('fixed') +
-              tsStandardOptions.color.withFixedColor('yellow')
-            ),
-            tsOverride.byName.new('Disruptions Allowed') +
-            tsOverride.byName.withPropertiesFromOptions(
-              tsStandardOptions.color.withMode('fixed') +
-              tsStandardOptions.color.withFixedColor('red')
-            ),
-            tsOverride.byName.new('Desired Healthy') +
-            tsOverride.byName.withPropertiesFromOptions(
-              tsStandardOptions.color.withMode('fixed') +
-              tsStandardOptions.color.withFixedColor('green')
-            ),
-            tsOverride.byName.new('Expected Pods') +
-            tsOverride.byName.withPropertiesFromOptions(
-              tsStandardOptions.color.withMode('fixed') +
-              tsStandardOptions.color.withFixedColor('blue')
-            ),
-          ]),
+            fillOpacity=0,
+            overrides=[
+              tsOverride.byName.new('Currently Healthy') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('yellow')
+              ),
+              tsOverride.byName.new('Disruptions Allowed') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('red')
+              ),
+              tsOverride.byName.new('Desired Healthy') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('green')
+              ),
+              tsOverride.byName.new('Expected Pods') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('blue')
+              ),
+            ],
+          ),
       };
 
       local rows =
@@ -274,15 +275,16 @@ local tsOverride = tsStandardOptions.override;
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
           panels.namespaceSummaryTable +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(1) +
-          tablePanel.gridPos.withW(24) +
-          tablePanel.gridPos.withH(7),
-          row.new('$pdb Summary') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(8) +
+          row.gridPos.withY(1) +
           row.gridPos.withW(24) +
-          row.gridPos.withH(1),
+          row.gridPos.withH(10),
+          row.new('$poddisruptionbudget') +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(11) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1) +
+          row.withRepeat('poddisruptionbudget'),
         ] +
         grid.makeGrid(
           [
@@ -292,15 +294,15 @@ local tsOverride = tsStandardOptions.override;
             panels.expectedPodsStat,
           ],
           panelWidth=6,
-          panelHeight=3,
-          startY=9
+          panelHeight=4,
+          startY=12
         ) +
         [
           panels.statusTimeSeries +
-          timeSeriesPanel.gridPos.withX(0) +
-          timeSeriesPanel.gridPos.withY(12) +
-          timeSeriesPanel.gridPos.withW(24) +
-          timeSeriesPanel.gridPos.withH(8),
+          row.gridPos.withX(0) +
+          row.gridPos.withY(16) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(10),
         ];
 
       mixinUtils.dashboards.bypassDashboardValidation +

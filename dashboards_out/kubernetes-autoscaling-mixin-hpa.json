@@ -49,10 +49,11 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
+            "h": 3,
             "w": 6,
             "x": 0,
             "y": 1
@@ -68,9 +69,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_desired_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_desired_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Desired Replicas",
@@ -94,10 +96,11 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
+            "h": 3,
             "w": 6,
             "x": 6,
             "y": 1
@@ -113,9 +116,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_current_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_current_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Current Replicas",
@@ -139,10 +143,11 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
+            "h": 3,
             "w": 6,
             "x": 12,
             "y": 1
@@ -158,9 +163,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_min_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_min_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Min Replicas",
@@ -184,10 +190,11 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
+            "h": 3,
             "w": 6,
             "x": 18,
             "y": 1
@@ -203,25 +210,14 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_max_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_max_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Max Replicas",
          "type": "stat"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 5
-         },
-         "id": 6,
-         "title": "Metric Targets",
-         "type": "row"
       },
       {
          "datasource": {
@@ -239,12 +235,12 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 24,
             "x": 0,
-            "y": 6
+            "y": 4
          },
-         "id": 7,
+         "id": 6,
          "options": {
             "footer": {
                "enablePagination": true
@@ -257,13 +253,40 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\",\nmetric_name=~\"$metric_name\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
                "format": "table",
                "instant": true
             }
          ],
          "title": "Metric Targets",
-         "transformations": [ ],
+         "transformations": [
+            {
+               "id": "merge"
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "job": true
+                  },
+                  "indexByName": {
+                     "Value #A": 4,
+                     "horizontalpodautoscaler": 0,
+                     "metric_name": 2,
+                     "metric_target_type": 3,
+                     "namespace": 1
+                  },
+                  "renameByName": {
+                     "Value #A": "Threshold",
+                     "horizontalpodautoscaler": "Horitzontal Pod Autoscaler",
+                     "metric_name": "Metric Name",
+                     "metric_target_type": "Metric Target Type",
+                     "namespace": "Namespace"
+                  }
+               }
+            }
+         ],
          "type": "table"
       },
       {
@@ -274,8 +297,8 @@
             "x": 0,
             "y": 14
          },
-         "id": 8,
-         "title": "Metrics",
+         "id": 7,
+         "title": "$horizontalpodautoscaler / $metric_name / $metric_target_type",
          "type": "row"
       },
       {
@@ -287,10 +310,11 @@
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "fillOpacity": 10
+                  "fillOpacity": 0
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -298,18 +322,17 @@
             "x": 0,
             "y": 15
          },
-         "id": 9,
+         "id": 8,
          "options": {
             "legend": {
                "calcs": [
-                  "lastNotNull",
                   "mean",
                   "max"
                ],
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "LastNotNull",
+               "sortBy": "Mean",
                "sortDesc": true
             },
             "tooltip": {
@@ -325,7 +348,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "sum(\n  kube_horizontalpodautoscaler_status_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\",\n    metric_target_type=~\"$metric_target_type\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "expr": "sum(\n  kube_horizontalpodautoscaler_status_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nmetric_name=~\"$metric_name\",\nmetric_target_type=~\"$metric_target_type\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
                "legendFormat": "{{ metric_target_type }} / {{ metric_name }}"
             },
             {
@@ -334,7 +357,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\",\n    metric_target_type=~\"$metric_target_type\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nmetric_name=~\"$metric_name\",\nmetric_target_type=~\"$metric_target_type\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
                "legendFormat": "Threshold / {{ metric_name }}"
             }
          ],
@@ -350,10 +373,11 @@
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "fillOpacity": 10
+                  "fillOpacity": 0
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -361,18 +385,17 @@
             "x": 0,
             "y": 21
          },
-         "id": 10,
+         "id": 9,
          "options": {
             "legend": {
                "calcs": [
-                  "lastNotNull",
                   "mean",
                   "max"
                ],
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "LastNotNull",
+               "sortBy": "Mean",
                "sortDesc": true
             },
             "tooltip": {
@@ -388,7 +411,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_desired_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_desired_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
                "legendFormat": "Desired Replicas"
             },
             {
@@ -397,7 +420,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_current_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_current_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
                "legendFormat": "Current Replicas"
             },
             {
@@ -406,7 +429,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_min_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_min_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
                "legendFormat": "Min Replicas"
             },
             {
@@ -415,7 +438,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_max_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_max_replicas{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n\n    }\n  )\n)\n",
                "legendFormat": "Max Replicas"
             }
          ],
@@ -461,10 +484,9 @@
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "label": "Namespace",
-            "multi": true,
-            "name": "namespace",
-            "query": "label_values(kube_poddisruptionbudget_status_current_healthy{cluster=\"$cluster\", job=~\"$job\"}, namespace)",
+            "label": "Job",
+            "name": "job",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\"}, job)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -474,10 +496,21 @@
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": false,
+            "label": "Namespace",
+            "multi": true,
+            "name": "namespace",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", job=~\"$job\"}, namespace)",
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
             "label": "HPA",
-            "multi": false,
-            "name": "hpa",
+            "name": "horizontalpodautoscaler",
             "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\"}, horizontalpodautoscaler)",
             "refresh": 2,
             "sort": 1,
@@ -488,11 +521,9 @@
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": true,
             "label": "Metric Name",
-            "multi": true,
             "name": "metric_name",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=\"$hpa\"}, metric_name)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=~\"$horizontalpodautoscaler\"}, metric_name)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -502,11 +533,10 @@
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": true,
             "label": "Metric Target Type",
             "multi": true,
             "name": "metric_target_type",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=\"$hpa\", metric_name=~\"$metric_name\"}, metric_target_type)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=~\"$horizontalpodautoscaler\", metric_name=~\"$metric_name\"}, metric_target_type)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -518,6 +548,6 @@
       "to": "now"
    },
    "timezone": "utc",
-   "title": "Kubernetes / Autoscaling / HPA",
-   "uid": "kubernetes-autoscaling-mixin-hpa-jkwq"
+   "title": "Kubernetes / Autoscaling / Horizontal Pod Autoscaler",
+   "uid": "kubernetes-autoscaling-mixin-hpa-jkwq1"
 }

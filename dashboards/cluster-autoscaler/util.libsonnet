@@ -12,7 +12,10 @@ local query = variable.query;
     cluster: '%(clusterLabel)s="$cluster"' % config,
     job: 'job=~"$job"',
 
-    base: '%(cluster)s, %(job)s' % this,
+    base: |||
+      %(cluster)s,
+      %(job)s
+    ||| % this,
   },
 
   variables(config):: {

@@ -81,7 +81,7 @@
             ]
          },
          "gridPos": {
-            "h": 7,
+            "h": 10,
             "w": 24,
             "x": 0,
             "y": 1
@@ -105,7 +105,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_pod_disruptions_allowed{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\"\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_pod_disruptions_allowed{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
                "format": "table",
                "instant": true
             },
@@ -114,7 +114,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_desired_healthy{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\"\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_desired_healthy{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
                "format": "table",
                "instant": true
             },
@@ -123,7 +123,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_current_healthy{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\"\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_current_healthy{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
                "format": "table",
                "instant": true
             },
@@ -132,7 +132,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_expected_pods{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\"\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_expected_pods{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n\n    }\n  ) by (job, namespace, poddisruptionbudget)\n)\n",
                "format": "table",
                "instant": true
             }
@@ -176,10 +176,11 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 8
+            "y": 11
          },
          "id": 3,
-         "title": "$pdb Summary",
+         "repeat": "poddisruptionbudget",
+         "title": "$poddisruptionbudget",
          "type": "row"
       },
       {
@@ -200,13 +201,14 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 3,
+            "h": 4,
             "w": 6,
             "x": 0,
-            "y": 9
+            "y": 12
          },
          "id": 4,
          "options": {
@@ -219,9 +221,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_pod_disruptions_allowed{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_pod_disruptions_allowed{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Disruptions Allowed",
@@ -245,13 +248,14 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 3,
+            "h": 4,
             "w": 6,
             "x": 6,
-            "y": 9
+            "y": 12
          },
          "id": 5,
          "options": {
@@ -264,9 +268,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_desired_healthy{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_desired_healthy{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Desired Healthy",
@@ -290,13 +295,14 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 3,
+            "h": 4,
             "w": 6,
             "x": 12,
-            "y": 9
+            "y": 12
          },
          "id": 6,
          "options": {
@@ -309,9 +315,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_current_healthy{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_current_healthy{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Currently Healthy",
@@ -335,13 +342,14 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
-            "h": 3,
+            "h": 4,
             "w": 6,
             "x": 18,
-            "y": 9
+            "y": 12
          },
          "id": 7,
          "options": {
@@ -354,9 +362,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_expected_pods{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n"
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_expected_pods{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
+               "instant": false
             }
          ],
          "title": "Expected Pods",
@@ -371,7 +380,7 @@
          "fieldConfig": {
             "defaults": {
                "custom": {
-                  "fillOpacity": 10
+                  "fillOpacity": 0
                },
                "unit": "short"
             },
@@ -439,10 +448,10 @@
             ]
          },
          "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 24,
             "x": 0,
-            "y": 12
+            "y": 16
          },
          "id": 8,
          "options": {
@@ -470,7 +479,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_pod_disruptions_allowed{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_pod_disruptions_allowed{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
                "legendFormat": "Disruptions Allowed"
             },
             {
@@ -479,7 +488,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_desired_healthy{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_desired_healthy{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
                "legendFormat": "Desired Healthy"
             },
             {
@@ -488,7 +497,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_current_healthy{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_current_healthy{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
                "legendFormat": "Currently Healthy"
             },
             {
@@ -497,7 +506,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_expected_pods{\n      cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", poddisruptionbudget=~\"$pdb\"\n    }\n  )\n)\n",
+               "expr": "round(\n  sum(\n    kube_poddisruptionbudget_status_expected_pods{\n      cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\npoddisruptionbudget=~\"$poddisruptionbudget\"\n\n    }\n  )\n)\n",
                "legendFormat": "Expected Pods"
             }
          ],
@@ -570,8 +579,8 @@
             },
             "includeAll": false,
             "label": "Pod Disruption Budget",
-            "multi": false,
-            "name": "pdb",
+            "multi": true,
+            "name": "poddisruptionbudget",
             "query": "label_values(kube_poddisruptionbudget_status_current_healthy{cluster=\"$cluster\", namespace=~\"$namespace\"}, poddisruptionbudget)",
             "refresh": 2,
             "sort": 1,
@@ -585,5 +594,5 @@
    },
    "timezone": "utc",
    "title": "Kubernetes / Autoscaling / Pod Disruption Budget",
-   "uid": "kubernetes-autoscaling-mixin-pdb-jkwq"
+   "uid": "kubernetes-autoscaling-mixin-pdb-jkwq1"
 }

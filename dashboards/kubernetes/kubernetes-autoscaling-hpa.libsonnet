@@ -8,6 +8,12 @@ local grid = g.util.grid;
 
 local tablePanel = g.panel.table;
 
+// Table
+local tbStandardOptions = tablePanel.standardOptions;
+local tbQueryOptions = tablePanel.queryOptions;
+local tbOverride = tbStandardOptions.override;
+local tbFieldConfig = tablePanel.fieldConfig;
+
 {
   grafanaDashboards+:: {
     'kubernetes-autoscaling-mixin-hpa.json':
@@ -17,95 +23,78 @@ local tablePanel = g.panel.table;
       local variables = [
         defaultVariables.datasource,
         defaultVariables.cluster,
-        defaultVariables.namespace,
+        defaultVariables.hpaJob,
+        defaultVariables.hpaNamespace,
         defaultVariables.hpa,
-        defaultVariables.metricName,
-        defaultVariables.metricTargetType,
+        defaultVariables.hpaMetricName,
+        defaultVariables.hpaMetricTargetType,
       ];
 
+      local defaultFilters = util.filters($._config);
       local queries = {
         desiredReplicas: |||
           round(
             sum(
               kube_horizontalpodautoscaler_status_desired_replicas{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                horizontalpodautoscaler="$hpa"
+                %(withHpa)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         currentReplicas: |||
           round(
             sum(
               kube_horizontalpodautoscaler_status_current_replicas{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                horizontalpodautoscaler="$hpa"
+                %(withHpa)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         minReplicas: |||
           round(
             sum(
               kube_horizontalpodautoscaler_spec_min_replicas{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                horizontalpodautoscaler="$hpa"
+                %(withHpa)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         maxReplicas: |||
           round(
             sum(
               kube_horizontalpodautoscaler_spec_max_replicas{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                horizontalpodautoscaler="$hpa"
+                %(withHpa)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         metricTargets: |||
           sum(
             kube_horizontalpodautoscaler_spec_target_metric{
-              cluster="$cluster",
-              namespace=~"$namespace",
-              horizontalpodautoscaler="$hpa",
-              metric_name=~"$metric_name"
+              %(withHpaMetricName)s
             }
           ) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)
-        |||,
+        ||| % defaultFilters,
 
         usageThreshold: |||
           sum(
             kube_horizontalpodautoscaler_spec_target_metric{
-              cluster="$cluster",
-              namespace=~"$namespace",
-              horizontalpodautoscaler="$hpa",
-              metric_name=~"$metric_name",
-              metric_target_type=~"$metric_target_type"
+              %(withHpaMetricTargetType)s
             }
           ) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)
-        |||,
+        ||| % defaultFilters,
 
         utilization: |||
           sum(
             kube_horizontalpodautoscaler_status_target_metric{
-              cluster="$cluster",
-              namespace=~"$namespace",
-              horizontalpodautoscaler="$hpa",
-              metric_name=~"$metric_name",
-              metric_target_type=~"$metric_target_type"
+              %(withHpaMetricTargetType)s
             }
           ) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)
-        |||,
+        ||| % defaultFilters,
       };
 
       local panels = {
@@ -155,7 +144,7 @@ local tablePanel = g.panel.table;
                 legend: 'Threshold / {{ metric_name }}',
               },
             ],
-            calcs=['lastNotNull', 'mean', 'max'],
+            fillOpacity=0,
             description='The current utilization and configured threshold for the HPA metric.',
           ),
 
@@ -181,7 +170,7 @@ local tablePanel = g.panel.table;
                 legend: 'Max Replicas',
               },
             ],
-            calcs=['lastNotNull', 'mean', 'max'],
+            fillOpacity=0,
             description='The desired, current, minimum, and maximum replicas for the HPA over time.',
           ),
 
@@ -191,6 +180,36 @@ local tablePanel = g.panel.table;
             'short',
             queries.metricTargets,
             description='Configured metric targets for the HPA.',
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'merge'
+              ),
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    namespace: 'Namespace',
+                    horizontalpodautoscaler: 'Horitzontal Pod Autoscaler',
+                    metric_name: 'Metric Name',
+                    metric_target_type: 'Metric Target Type',
+                    'Value #A': 'Threshold',
+                  },
+                  indexByName: {
+                    horizontalpodautoscaler: 0,
+                    namespace: 1,
+                    metric_name: 2,
+                    metric_target_type: 3,
+                    'Value #A': 4,
+                  },
+                  excludeByName: {
+                    Time: true,
+                    job: true,
+                  },
+                }
+              ),
+            ]
           ),
       };
 
@@ -210,40 +229,34 @@ local tablePanel = g.panel.table;
             panels.maxReplicasStat,
           ],
           panelWidth=6,
-          panelHeight=4,
+          panelHeight=3,
           startY=1
         ) +
         [
-          row.new('Metric Targets') +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(5) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
           panels.metricTargetsTable +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(6) +
-          tablePanel.gridPos.withW(24) +
-          tablePanel.gridPos.withH(8),
-          row.new('Metrics') +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(4) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(10),
+          row.new('$horizontalpodautoscaler / $metric_name / $metric_target_type') +
           row.gridPos.withX(0) +
           row.gridPos.withY(14) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
-          panels.usageAndThresholdTimeSeries +
-          g.panel.timeSeries.gridPos.withX(0) +
-          g.panel.timeSeries.gridPos.withY(15) +
-          g.panel.timeSeries.gridPos.withW(24) +
-          g.panel.timeSeries.gridPos.withH(6),
-          panels.replicasTimeSeries +
-          g.panel.timeSeries.gridPos.withX(0) +
-          g.panel.timeSeries.gridPos.withY(21) +
-          g.panel.timeSeries.gridPos.withW(24) +
-          g.panel.timeSeries.gridPos.withH(6),
-        ];
+        ] +
+        grid.makeGrid(
+          [
+            panels.usageAndThresholdTimeSeries,
+            panels.replicasTimeSeries,
+          ],
+          panelWidth=24,
+          panelHeight=6,
+          startY=15
+        );
 
       mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
-        'Kubernetes / Autoscaling / HPA',
+        'Kubernetes / Autoscaling / Horizontal Pod Autoscaler',
       ) +
       dashboard.withDescription('A dashboard that monitors Horizontal Pod Autoscalers. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
       dashboard.withUid($._config.hpaDashboardUid) +

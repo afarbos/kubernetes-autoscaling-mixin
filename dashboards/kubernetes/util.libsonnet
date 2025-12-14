@@ -10,12 +10,59 @@ local query = variable.query;
   filters(config):: {
     local this = self,
     cluster: '%(clusterLabel)s="$cluster"' % config,
+    clusterLabel: config.clusterLabel,
     job: 'job=~"$job"',
     namespace: 'namespace=~"$namespace"',
-    pdb: 'poddisruptionbudget=~"$pdb"',
+    container: 'container=~"$container"',
 
-    base: '%(cluster)s, %(job)s, %(namespace)s' % this,
-    withPdb: '%(base)s, %(pdb)s' % this,
+    // PDB
+    pdb: 'poddisruptionbudget=~"$poddisruptionbudget"',
+
+    // HPA
+    hpa: 'horizontalpodautoscaler=~"$horizontalpodautoscaler"',
+    hpaMetricName: 'metric_name=~"$metric_name"',
+    hpaMetricTargetType: 'metric_target_type=~"$metric_target_type"',
+
+    // VPA
+    vpa: 'verticalpodautoscaler=~"$verticalpodautoscaler"',
+    vpaPrefix: config.vpa.vpaPrefix,
+
+    base: |||
+      %(cluster)s,
+      %(job)s,
+      %(namespace)s
+    ||| % this,
+
+    // PDB
+    withPdb: |||
+      %(base)s,
+      %(pdb)s
+    ||| % this,
+
+    // HPA
+    withHpa: |||
+      %(base)s,
+      %(hpa)s
+    ||| % this,
+
+    withHpaMetricName: |||
+      %(base)s,
+      %(hpa)s,
+      %(hpaMetricName)s
+    ||| % this,
+
+    withHpaMetricTargetType: |||
+      %(base)s,
+      %(hpaMetricName)s,
+      %(hpaMetricTargetType)s
+    ||| % this,
+
+    // VPA
+    withVpa: |||
+      %(base)s,
+      %(vpa)s,
+      %(container)s
+    ||| % this,
   },
 
   variables(config):: {
@@ -53,24 +100,25 @@ local query = variable.query;
         else query.generalOptions.showOnDashboard.withNothing()
       ),
 
-    job:
+    // PDB
+    pdbJob:
       query.new(
         'job',
         'label_values(kube_poddisruptionbudget_status_current_healthy{%(cluster)s}, job)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
-      query.withSort(1) +
+      query.withSort() +
       query.generalOptions.withLabel('Job') +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
-    namespace:
+    pdbNamespace:
       query.new(
         'namespace',
         'label_values(kube_poddisruptionbudget_status_current_healthy{%(cluster)s, %(job)s}, namespace)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
-      query.withSort(1) +
+      query.withSort() +
       query.generalOptions.withLabel('Namespace') +
       query.selectionOptions.withMulti(true) +
       query.refresh.onLoad() +
@@ -78,51 +126,118 @@ local query = variable.query;
 
     pdb:
       query.new(
-        'pdb',
+        'poddisruptionbudget',
         'label_values(kube_poddisruptionbudget_status_current_healthy{%(cluster)s, %(namespace)s}, poddisruptionbudget)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
       query.generalOptions.withLabel('Pod Disruption Budget') +
-      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withMulti(true) +
       query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    // HPA
+    hpaJob:
+      query.new(
+        'job',
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s}, job)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Job') +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    hpaNamespace:
+      query.new(
+        'namespace',
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(job)s}, namespace)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Namespace') +
+      query.selectionOptions.withMulti(true) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
     hpa:
       query.new(
-        'hpa',
+        'horizontalpodautoscaler',
         'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s}, horizontalpodautoscaler)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
       query.generalOptions.withLabel('HPA') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
-    metricName:
+    hpaMetricName:
       query.new(
         'metric_name',
-        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, horizontalpodautoscaler=\"$hpa\"}, metric_name)' % defaultFilters,
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, %(hpa)s}, metric_name)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
       query.generalOptions.withLabel('Metric Name') +
-      query.selectionOptions.withMulti(true) +
-      query.selectionOptions.withIncludeAll(true) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
-    metricTargetType:
+    hpaMetricTargetType:
       query.new(
         'metric_target_type',
-        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, horizontalpodautoscaler=\"$hpa\", metric_name=~\"$metric_name\"}, metric_target_type)' % defaultFilters,
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, %(hpa)s, %(hpaMetricName)s}, metric_target_type)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
       query.generalOptions.withLabel('Metric Target Type') +
+      query.selectionOptions.withMulti(true) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    // VPA
+    vpaJob:
+      query.new(
+        'job',
+        'label_values(kube_customresource_verticalpodautoscaler_labels{%(cluster)s}, job)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Job') +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    vpaNamespace:
+      query.new(
+        'namespace',
+        'label_values(kube_customresource_verticalpodautoscaler_labels{%(cluster)s, %(job)s}, namespace)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Namespace') +
+      query.selectionOptions.withMulti(true) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    vpa:
+      query.new(
+        'verticalpodautoscaler',
+        'label_values(kube_customresource_verticalpodautoscaler_labels{%(cluster)s, %(namespace)s}, verticalpodautoscaler)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Vertical Pod Autoscaler') +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    vpaContainer:
+      query.new(
+        'container',
+        'label_values(kube_customresource_verticalpodautoscaler_status_recommendation_containerrecommendations_target{%(cluster)s, %(namespace)s, %(vpa)s}, container)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Container') +
       query.selectionOptions.withMulti(true) +
       query.selectionOptions.withIncludeAll(true) +
       query.refresh.onLoad() +

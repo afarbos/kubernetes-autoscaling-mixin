@@ -70,7 +70,8 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 4,
@@ -89,9 +90,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_cluster_state_synced{\n    cluster=\"$cluster\", job=~\"$job\"\n  }\n) by (job)\n"
+               "expr": "sum(\n  karpenter_cluster_state_synced{\n    cluster=\"$cluster\", job=~\"$job\"\n  }\n) by (job)\n",
+               "instant": false
             }
          ],
          "title": "Cluster State Synced",
@@ -119,7 +121,8 @@
                   ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 4,
@@ -138,9 +141,10 @@
             {
                "datasource": {
                   "type": "prometheus",
-                  "uid": "${datasource}"
+                  "uid": "$datasource"
                },
-               "expr": "sum(\n  karpenter_cluster_state_node_count{\n    cluster=\"$cluster\", job=~\"$job\"\n  }\n) by (job)\n"
+               "expr": "sum(\n  karpenter_cluster_state_node_count{\n    cluster=\"$cluster\", job=~\"$job\"\n  }\n) by (job)\n",
+               "instant": false
             }
          ],
          "title": "Cluster State Node Count",
@@ -158,7 +162,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -212,7 +217,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -286,7 +292,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -373,7 +380,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -426,7 +434,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -479,7 +488,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -562,7 +572,8 @@
                   "fillOpacity": 10
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -616,7 +627,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -687,7 +699,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -770,7 +783,8 @@
                   "fillOpacity": 10
                },
                "unit": "s"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 6,
@@ -866,5 +880,5 @@
    },
    "timezone": "utc",
    "title": "Kubernetes / Autoscaling / Karpenter / Performance",
-   "uid": "kubernetes-autoscaling-mixin-kperf-jkwq"
+   "uid": "kubernetes-autoscaling-mixin-kperf-jkwq1"
 }

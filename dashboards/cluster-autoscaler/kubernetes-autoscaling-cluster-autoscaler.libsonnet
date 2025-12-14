@@ -177,7 +177,7 @@ local gaStandardOptions = gauge.standardOptions;
         };
 
         local panels = {
-          totalNodes:
+          totalNodesStat:
             mixinUtils.dashboards.statPanel(
               'Total Nodes',
               'short',
@@ -185,7 +185,7 @@ local gaStandardOptions = gauge.standardOptions;
               description='The total number of nodes in the cluster.',
             ),
 
-          maxNodes:
+          maxNodesStat:
             mixinUtils.dashboards.statPanel(
               'Max Nodes',
               'short',
@@ -193,7 +193,7 @@ local gaStandardOptions = gauge.standardOptions;
               description='The maximum number of nodes allowed in the cluster.',
             ),
 
-          nodeGroups:
+          nodeGroupsStat:
             mixinUtils.dashboards.statPanel(
               'Node Groups',
               'short',
@@ -201,26 +201,25 @@ local gaStandardOptions = gauge.standardOptions;
               description='The number of node groups in the cluster.',
             ),
 
-          healthyNodes:
-            gauge.new('Healthy Nodes') +
-            gauge.queryOptions.withTargets(
-              g.query.prometheus.new('$datasource', queries.healthyNodes)
-            ) +
-            gaStandardOptions.withUnit('percent') +
-            gaStandardOptions.withMin(0) +
-            gaStandardOptions.withMax(100) +
-            gauge.options.reduceOptions.withCalcs(['lastNotNull']) +
-            gaStandardOptions.thresholds.withSteps([
-              gaStandardOptions.threshold.step.withValue(0) +
-              gaStandardOptions.threshold.step.withColor('red'),
-              gaStandardOptions.threshold.step.withValue(50) +
-              gaStandardOptions.threshold.step.withColor('yellow'),
-              gaStandardOptions.threshold.step.withValue(80) +
-              gaStandardOptions.threshold.step.withColor('green'),
-            ]) +
-            gauge.panelOptions.withDescription('The percentage of healthy nodes in the cluster.'),
+          healthyNodesGauge:
+            mixinUtils.dashboards.gaugePanel(
+              'Healthy Nodes',
+              'percent',
+              queries.healthyNodes,
+              description='The percentage of healthy nodes in the cluster.',
+              min=0,
+              max=100,
+              steps=[
+                gaStandardOptions.threshold.step.withValue(0) +
+                gaStandardOptions.threshold.step.withColor('red'),
+                gaStandardOptions.threshold.step.withValue(50) +
+                gaStandardOptions.threshold.step.withColor('yellow'),
+                gaStandardOptions.threshold.step.withValue(80) +
+                gaStandardOptions.threshold.step.withColor('green'),
+              ],
+            ),
 
-          safeToScale:
+          safeToScaleStat:
             mixinUtils.dashboards.statPanel(
               'Safe to Scale',
               'short',
@@ -243,7 +242,7 @@ local gaStandardOptions = gauge.standardOptions;
               ],
             ),
 
-          numberUnscheduledPods:
+          numberUnscheduledPodsStat:
             mixinUtils.dashboards.statPanel(
               'Unscheduled Pods',
               'short',
@@ -251,7 +250,7 @@ local gaStandardOptions = gauge.standardOptions;
               description='The number of unscheduled pods in the cluster.',
             ),
 
-          lastScaleDown:
+          lastScaleDownStat:
             mixinUtils.dashboards.statPanel(
               'Last Scale Down',
               's',
@@ -259,7 +258,7 @@ local gaStandardOptions = gauge.standardOptions;
               description='The timestamp of the last scale down activity.',
             ),
 
-          lastScaleUp:
+          lastScaleUpStat:
             mixinUtils.dashboards.statPanel(
               'Last Scale Up',
               's',
@@ -267,7 +266,7 @@ local gaStandardOptions = gauge.standardOptions;
               description='The timestamp of the last scale up activity.',
             ),
 
-          podActivity:
+          podActivityTimeSeries:
             mixinUtils.dashboards.timeSeriesPanel(
               'Pod Activity',
               'short',
@@ -282,18 +281,20 @@ local gaStandardOptions = gauge.standardOptions;
                 },
               ],
               description='The activity of pods in the cluster.',
+              stack='normal'
             ),
 
-          nodeActivity:
+          nodeActivityTimeSeries:
             mixinUtils.dashboards.timeSeriesPanel(
               'Node Activity',
               'short',
               queries.nodeActivity,
               '{{ state }}',
               description='The activity of nodes in the cluster.',
+              stack='normal'
             ),
 
-          autoscalingActivity:
+          autoscalingActivityTimeSeries:
             mixinUtils.dashboards.timeSeriesPanel(
               'Autoscaling Activity',
               'short',
@@ -316,6 +317,7 @@ local gaStandardOptions = gauge.standardOptions;
                 },
               ],
               description='The autoscaling activity in the cluster.',
+              fillOpacity=0,
             ),
         };
 
@@ -329,14 +331,14 @@ local gaStandardOptions = gauge.standardOptions;
           ] +
           grid.makeGrid(
             [
-              panels.totalNodes,
-              panels.maxNodes,
-              panels.nodeGroups,
-              panels.healthyNodes,
-              panels.safeToScale,
-              panels.numberUnscheduledPods,
-              panels.lastScaleDown,
-              panels.lastScaleUp,
+              panels.totalNodesStat,
+              panels.maxNodesStat,
+              panels.nodeGroupsStat,
+              panels.healthyNodesGauge,
+              panels.safeToScaleStat,
+              panels.numberUnscheduledPodsStat,
+              panels.lastScaleDownStat,
+              panels.lastScaleUpStat,
             ],
             panelWidth=3,
             panelHeight=4,
@@ -351,8 +353,8 @@ local gaStandardOptions = gauge.standardOptions;
           ] +
           grid.makeGrid(
             [
-              panels.podActivity,
-              panels.nodeActivity,
+              panels.podActivityTimeSeries,
+              panels.nodeActivityTimeSeries,
             ],
             panelWidth=12,
             panelHeight=8,
@@ -360,7 +362,7 @@ local gaStandardOptions = gauge.standardOptions;
           ) +
           grid.makeGrid(
             [
-              panels.autoscalingActivity,
+              panels.autoscalingActivityTimeSeries,
             ],
             panelWidth=24,
             panelHeight=8,
