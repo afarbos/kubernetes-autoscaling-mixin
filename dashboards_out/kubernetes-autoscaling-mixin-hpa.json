@@ -220,7 +220,7 @@
             "y": 5
          },
          "id": 6,
-         "title": "Metrics",
+         "title": "Metric Targets",
          "type": "row"
       },
       {
@@ -228,38 +228,26 @@
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "The configured threshold for the HPA metric.",
+         "description": "Configured metric targets for the HPA.",
          "fieldConfig": {
             "defaults": {
-               "custom": {
-                  "fillOpacity": 10
+               "thresholds": {
+                  "steps": [ ]
                },
                "unit": "short"
-            }
+            },
+            "overrides": [ ]
          },
          "gridPos": {
             "h": 8,
-            "w": 12,
+            "w": 24,
             "x": 0,
             "y": 6
          },
          "id": 7,
          "options": {
-            "legend": {
-               "calcs": [
-                  "lastNotNull",
-                  "mean",
-                  "max"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "LastNotNull",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
+            "footer": {
+               "enablePagination": true
             }
          },
          "pluginVersion": "v11.4.0",
@@ -269,20 +257,33 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "exemplar": false,
-               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\",\n    metric_target_type=~\"$metric_target_type\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
-               "legendFormat": "{{ metric_name }} / {{ metric_target_type }}"
+               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "format": "table",
+               "instant": true
             }
          ],
-         "title": "Usage Threshold",
-         "type": "timeseries"
+         "title": "Metric Targets",
+         "transformations": [ ],
+         "type": "table"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 14
+         },
+         "id": 8,
+         "title": "Metrics",
+         "type": "row"
       },
       {
          "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "The current utilization of the HPA metric.",
+         "description": "The current utilization and configured threshold for the HPA metric.",
          "fieldConfig": {
             "defaults": {
                "custom": {
@@ -292,12 +293,12 @@
             }
          },
          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 6
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 15
          },
-         "id": 8,
+         "id": 9,
          "options": {
             "legend": {
                "calcs": [
@@ -325,49 +326,58 @@
                },
                "exemplar": false,
                "expr": "sum(\n  kube_horizontalpodautoscaler_status_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\",\n    metric_target_type=~\"$metric_target_type\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
-               "legendFormat": "{{ metric_name }} / {{ metric_target_type }}"
+               "legendFormat": "{{ metric_target_type }} / {{ metric_name }}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "exemplar": false,
+               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\",\n    metric_target_type=~\"$metric_target_type\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "legendFormat": "Threshold / {{ metric_name }}"
             }
          ],
-         "title": "Utilization",
+         "title": "Usage & Threshold",
          "type": "timeseries"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 14
-         },
-         "id": 9,
-         "title": "Metric Targets",
-         "type": "row"
       },
       {
          "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "Configured metric targets for the HPA.",
+         "description": "The desired, current, minimum, and maximum replicas for the HPA over time.",
          "fieldConfig": {
             "defaults": {
-               "thresholds": {
-                  "steps": [ ]
+               "custom": {
+                  "fillOpacity": 10
                },
                "unit": "short"
-            },
-            "overrides": [ ]
+            }
          },
          "gridPos": {
-            "h": 8,
+            "h": 6,
             "w": 24,
             "x": 0,
-            "y": 15
+            "y": 21
          },
          "id": 10,
          "options": {
-            "footer": {
-               "enablePagination": true
+            "legend": {
+               "calcs": [
+                  "lastNotNull",
+                  "mean",
+                  "max"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "LastNotNull",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
             }
          },
          "pluginVersion": "v11.4.0",
@@ -377,14 +387,40 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\n    namespace=~\"$namespace\",\n    horizontalpodautoscaler=\"$hpa\",\n    metric_name=~\"$metric_name\"\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
-               "format": "table",
-               "instant": true
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_desired_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "legendFormat": "Desired Replicas"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_status_current_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "legendFormat": "Current Replicas"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_min_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "legendFormat": "Min Replicas"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "exemplar": false,
+               "expr": "round(\n  sum(\n    kube_horizontalpodautoscaler_spec_max_replicas{\n      cluster=\"$cluster\",\n      namespace=~\"$namespace\",\n      horizontalpodautoscaler=\"$hpa\"\n    }\n  )\n)\n",
+               "legendFormat": "Max Replicas"
             }
          ],
-         "title": "Metric Targets",
-         "transformations": [ ],
-         "type": "table"
+         "title": "Replicas",
+         "type": "timeseries"
       }
    ],
    "schemaVersion": 39,
@@ -442,7 +478,7 @@
             "label": "HPA",
             "multi": false,
             "name": "hpa",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=\"$namespace\"}, horizontalpodautoscaler)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\"}, horizontalpodautoscaler)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -456,7 +492,7 @@
             "label": "Metric Name",
             "multi": true,
             "name": "metric_name",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=\"$namespace\", horizontalpodautoscaler=\"$hpa\"}, metric_name)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=\"$hpa\"}, metric_name)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -470,7 +506,7 @@
             "label": "Metric Target Type",
             "multi": true,
             "name": "metric_target_type",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=\"$namespace\", horizontalpodautoscaler=\"$hpa\", metric_name=~\"$metric_name\"}, metric_target_type)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=\"$hpa\", metric_name=~\"$metric_name\"}, metric_target_type)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

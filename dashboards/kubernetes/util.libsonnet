@@ -88,5 +88,44 @@ local query = variable.query;
       query.selectionOptions.withIncludeAll(false) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
+
+    hpa:
+      query.new(
+        'hpa',
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s}, horizontalpodautoscaler)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('HPA') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    metricName:
+      query.new(
+        'metric_name',
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, horizontalpodautoscaler=\"$hpa\"}, metric_name)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Metric Name') +
+      query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    metricTargetType:
+      query.new(
+        'metric_target_type',
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, horizontalpodautoscaler=\"$hpa\", metric_name=~\"$metric_name\"}, metric_target_type)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(this.datasource) +
+      query.withSort() +
+      query.generalOptions.withLabel('Metric Target Type') +
+      query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
   },
 }

@@ -14,49 +14,13 @@ local tablePanel = g.panel.table;
 
       local defaultVariables = util.variables($._config);
 
-      local hpaVar = g.dashboard.variable.query.new(
-                       'hpa',
-                       'label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster="$cluster", namespace="$namespace"}, horizontalpodautoscaler)'
-                     ) +
-                     g.dashboard.variable.query.withDatasourceFromVariable(defaultVariables.datasource) +
-                     g.dashboard.variable.query.withSort() +
-                     g.dashboard.variable.query.generalOptions.withLabel('HPA') +
-                     g.dashboard.variable.query.selectionOptions.withMulti(false) +
-                     g.dashboard.variable.query.selectionOptions.withIncludeAll(false) +
-                     g.dashboard.variable.query.refresh.onLoad() +
-                     g.dashboard.variable.query.refresh.onTime();
-
-      local metricNameVar = g.dashboard.variable.query.new(
-                              'metric_name',
-                              'label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster="$cluster", namespace="$namespace", horizontalpodautoscaler="$hpa"}, metric_name)'
-                            ) +
-                            g.dashboard.variable.query.withDatasourceFromVariable(defaultVariables.datasource) +
-                            g.dashboard.variable.query.withSort() +
-                            g.dashboard.variable.query.generalOptions.withLabel('Metric Name') +
-                            g.dashboard.variable.query.selectionOptions.withMulti(true) +
-                            g.dashboard.variable.query.selectionOptions.withIncludeAll(true) +
-                            g.dashboard.variable.query.refresh.onLoad() +
-                            g.dashboard.variable.query.refresh.onTime();
-
-      local metricTargetTypeVar = g.dashboard.variable.query.new(
-                                    'metric_target_type',
-                                    'label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster="$cluster", namespace="$namespace", horizontalpodautoscaler="$hpa", metric_name=~"$metric_name"}, metric_target_type)'
-                                  ) +
-                                  g.dashboard.variable.query.withDatasourceFromVariable(defaultVariables.datasource) +
-                                  g.dashboard.variable.query.withSort() +
-                                  g.dashboard.variable.query.generalOptions.withLabel('Metric Target Type') +
-                                  g.dashboard.variable.query.selectionOptions.withMulti(true) +
-                                  g.dashboard.variable.query.selectionOptions.withIncludeAll(true) +
-                                  g.dashboard.variable.query.refresh.onLoad() +
-                                  g.dashboard.variable.query.refresh.onTime();
-
       local variables = [
         defaultVariables.datasource,
         defaultVariables.cluster,
         defaultVariables.namespace,
-        hpaVar,
-        metricNameVar,
-        metricTargetTypeVar,
+        defaultVariables.hpa,
+        defaultVariables.metricName,
+        defaultVariables.metricTargetType,
       ];
 
       local queries = {
@@ -145,7 +109,7 @@ local tablePanel = g.panel.table;
       };
 
       local panels = {
-        desiredReplicas:
+        desiredReplicasStat:
           mixinUtils.dashboards.statPanel(
             'Desired Replicas',
             'short',
@@ -153,7 +117,7 @@ local tablePanel = g.panel.table;
             description='The desired number of replicas for the HPA.',
           ),
 
-        currentReplicas:
+        currentReplicasStat:
           mixinUtils.dashboards.statPanel(
             'Current Replicas',
             'short',
@@ -161,7 +125,7 @@ local tablePanel = g.panel.table;
             description='The current number of replicas for the HPA.',
           ),
 
-        minReplicas:
+        minReplicasStat:
           mixinUtils.dashboards.statPanel(
             'Min Replicas',
             'short',
@@ -169,7 +133,7 @@ local tablePanel = g.panel.table;
             description='The minimum number of replicas configured for the HPA.',
           ),
 
-        maxReplicas:
+        maxReplicasStat:
           mixinUtils.dashboards.statPanel(
             'Max Replicas',
             'short',
@@ -177,24 +141,48 @@ local tablePanel = g.panel.table;
             description='The maximum number of replicas configured for the HPA.',
           ),
 
-        usageThreshold:
+        usageAndThresholdTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
-            'Usage Threshold',
+            'Usage & Threshold',
             'short',
-            queries.usageThreshold,
-            '{{ metric_name }} / {{ metric_target_type }}',
+            [
+              {
+                expr: queries.utilization,
+                legend: '{{ metric_target_type }} / {{ metric_name }}',
+              },
+              {
+                expr: queries.usageThreshold,
+                legend: 'Threshold / {{ metric_name }}',
+              },
+            ],
             calcs=['lastNotNull', 'mean', 'max'],
-            description='The configured threshold for the HPA metric.',
+            description='The current utilization and configured threshold for the HPA metric.',
           ),
 
-        utilization:
+        replicasTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
-            'Utilization',
+            'Replicas',
             'short',
-            queries.utilization,
-            '{{ metric_name }} / {{ metric_target_type }}',
+            [
+              {
+                expr: queries.desiredReplicas,
+                legend: 'Desired Replicas',
+              },
+              {
+                expr: queries.currentReplicas,
+                legend: 'Current Replicas',
+              },
+              {
+                expr: queries.minReplicas,
+                legend: 'Min Replicas',
+              },
+              {
+                expr: queries.maxReplicas,
+                legend: 'Max Replicas',
+              },
+            ],
             calcs=['lastNotNull', 'mean', 'max'],
-            description='The current utilization of the HPA metric.',
+            description='The desired, current, minimum, and maximum replicas for the HPA over time.',
           ),
 
         metricTargetsTable:
@@ -216,42 +204,41 @@ local tablePanel = g.panel.table;
         ] +
         grid.makeGrid(
           [
-            panels.desiredReplicas,
-            panels.currentReplicas,
-            panels.minReplicas,
-            panels.maxReplicas,
+            panels.desiredReplicasStat,
+            panels.currentReplicasStat,
+            panels.minReplicasStat,
+            panels.maxReplicasStat,
           ],
           panelWidth=6,
           panelHeight=4,
           startY=1
         ) +
         [
-          row.new('Metrics') +
+          row.new('Metric Targets') +
           row.gridPos.withX(0) +
           row.gridPos.withY(5) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            panels.usageThreshold,
-            panels.utilization,
-          ],
-          panelWidth=12,
-          panelHeight=8,
-          startY=6
-        ) +
-        [
-          row.new('Metric Targets') +
+          panels.metricTargetsTable +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(6) +
+          tablePanel.gridPos.withW(24) +
+          tablePanel.gridPos.withH(8),
+          row.new('Metrics') +
           row.gridPos.withX(0) +
           row.gridPos.withY(14) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
-          panels.metricTargetsTable +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(15) +
-          tablePanel.gridPos.withW(24) +
-          tablePanel.gridPos.withH(8),
+          panels.usageAndThresholdTimeSeries +
+          g.panel.timeSeries.gridPos.withX(0) +
+          g.panel.timeSeries.gridPos.withY(15) +
+          g.panel.timeSeries.gridPos.withW(24) +
+          g.panel.timeSeries.gridPos.withH(6),
+          panels.replicasTimeSeries +
+          g.panel.timeSeries.gridPos.withX(0) +
+          g.panel.timeSeries.gridPos.withY(21) +
+          g.panel.timeSeries.gridPos.withW(24) +
+          g.panel.timeSeries.gridPos.withH(6),
         ];
 
       mixinUtils.dashboards.bypassDashboardValidation +
