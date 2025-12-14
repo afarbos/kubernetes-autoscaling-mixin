@@ -459,14 +459,13 @@
          "options": {
             "legend": {
                "calcs": [
-                  "lastNotNull",
                   "mean",
                   "max"
                ],
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "LastNotNull",
+               "sortBy": "Mean",
                "sortDesc": true
             },
             "tooltip": {
@@ -522,14 +521,13 @@
          "options": {
             "legend": {
                "calcs": [
-                  "lastNotNull",
                   "mean",
                   "max"
                ],
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "LastNotNull",
+               "sortBy": "Mean",
                "sortDesc": true
             },
             "tooltip": {
@@ -576,14 +574,13 @@
          "options": {
             "legend": {
                "calcs": [
-                  "lastNotNull",
                   "mean",
                   "max"
                ],
                "displayMode": "table",
                "placement": "right",
                "showLegend": true,
-               "sortBy": "LastNotNull",
+               "sortBy": "Mean",
                "sortDesc": true
             },
             "tooltip": {

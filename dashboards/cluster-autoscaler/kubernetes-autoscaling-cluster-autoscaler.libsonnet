@@ -281,7 +281,6 @@ local gaStandardOptions = gauge.standardOptions;
                   legend: 'Evicted / {{ eviction_result }}',
                 },
               ],
-              calcs=['lastNotNull', 'mean', 'max'],
               description='The activity of pods in the cluster.',
             ),
 
@@ -291,7 +290,6 @@ local gaStandardOptions = gauge.standardOptions;
               'short',
               queries.nodeActivity,
               '{{ state }}',
-              calcs=['lastNotNull', 'mean', 'max'],
               description='The activity of nodes in the cluster.',
             ),
 
@@ -317,7 +315,6 @@ local gaStandardOptions = gauge.standardOptions;
                   legend: 'Scaled Down',
                 },
               ],
-              calcs=['lastNotNull', 'mean', 'max'],
               description='The autoscaling activity in the cluster.',
             ),
         };

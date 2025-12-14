@@ -6,127 +6,118 @@ local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
 
+local tablePanel = g.panel.table;
+local timeSeriesPanel = g.panel.timeSeries;
+
+// Table
+local tbStandardOptions = tablePanel.standardOptions;
+local tbQueryOptions = tablePanel.queryOptions;
+local tbOverride = tbStandardOptions.override;
+local tbFieldConfig = tablePanel.fieldConfig;
+
+// Timeseries
+local tsStandardOptions = timeSeriesPanel.standardOptions;
+local tsOverride = tsStandardOptions.override;
+
 {
   grafanaDashboards+:: {
     'kubernetes-autoscaling-mixin-pdb.json':
 
       local defaultVariables = util.variables($._config);
 
-      local pdbVar = g.dashboard.variable.query.new(
-                       'pdb',
-                       'label_values(kube_poddisruptionbudget_status_current_healthy{cluster="$cluster", namespace=~"$namespace"}, poddisruptionbudget)'
-                     ) +
-                     g.dashboard.variable.query.withDatasourceFromVariable(defaultVariables.datasource) +
-                     g.dashboard.variable.query.withSort() +
-                     g.dashboard.variable.query.generalOptions.withLabel('PDB') +
-                     g.dashboard.variable.query.selectionOptions.withMulti(true) +
-                     g.dashboard.variable.query.selectionOptions.withIncludeAll(true) +
-                     g.dashboard.variable.query.refresh.onLoad() +
-                     g.dashboard.variable.query.refresh.onTime();
-
       local variables = [
         defaultVariables.datasource,
         defaultVariables.cluster,
+        defaultVariables.job,
         defaultVariables.namespace,
-        pdbVar,
+        defaultVariables.pdb,
       ];
 
+      local defaultFilters = util.filters($._config);
       local queries = {
         disruptionsAllowed: |||
           round(
             sum(
               kube_poddisruptionbudget_status_pod_disruptions_allowed{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                poddisruptionbudget=~"$pdb"
+                %(withPdb)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         desiredHealthy: |||
           round(
             sum(
               kube_poddisruptionbudget_status_desired_healthy{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                poddisruptionbudget=~"$pdb"
+                %(withPdb)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         currentlyHealthy: |||
           round(
             sum(
               kube_poddisruptionbudget_status_current_healthy{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                poddisruptionbudget=~"$pdb"
+                %(withPdb)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
         expectedPods: |||
           round(
             sum(
               kube_poddisruptionbudget_status_expected_pods{
-                cluster="$cluster",
-                namespace=~"$namespace",
-                poddisruptionbudget=~"$pdb"
+                %(withPdb)s
               }
             )
           )
-        |||,
+        ||| % defaultFilters,
 
-        disruptionsAllowedByPdb: |||
+        disruptionsAllowedNamespace: |||
           round(
             sum(
               kube_poddisruptionbudget_status_pod_disruptions_allowed{
-                cluster="$cluster",
-                namespace=~"$namespace"
+                %(base)s
               }
             ) by (job, namespace, poddisruptionbudget)
           )
-        |||,
+        ||| % defaultFilters,
 
-        desiredHealthyByPdb: |||
+        desiredHealthyNamespace: |||
           round(
             sum(
               kube_poddisruptionbudget_status_desired_healthy{
-                cluster="$cluster",
-                namespace=~"$namespace"
+                %(base)s
               }
             ) by (job, namespace, poddisruptionbudget)
           )
-        |||,
+        ||| % defaultFilters,
 
-        currentlyHealthyByPdb: |||
+        currentlyHealthyNamespace: |||
           round(
             sum(
               kube_poddisruptionbudget_status_current_healthy{
-                cluster="$cluster",
-                namespace=~"$namespace"
+                %(base)s
               }
             ) by (job, namespace, poddisruptionbudget)
           )
-        |||,
+        ||| % defaultFilters,
 
-        expectedPodsByPdb: |||
+        expectedPodsNamespace: |||
           round(
             sum(
               kube_poddisruptionbudget_status_expected_pods{
-                cluster="$cluster",
-                namespace=~"$namespace"
+                %(base)s
               }
             ) by (job, namespace, poddisruptionbudget)
           )
-        |||,
+        ||| % defaultFilters,
       };
 
       local panels = {
-        disruptionsAllowed:
+        disruptionsAllowedStat:
           mixinUtils.dashboards.statPanel(
             'Disruptions Allowed',
             'short',
@@ -134,7 +125,7 @@ local grid = g.util.grid;
             description='The number of pod disruptions allowed for the selected PDB.',
           ),
 
-        desiredHealthy:
+        desiredHealthyStat:
           mixinUtils.dashboards.statPanel(
             'Desired Healthy',
             'short',
@@ -142,7 +133,7 @@ local grid = g.util.grid;
             description='The desired number of healthy pods for the selected PDB.',
           ),
 
-        currentlyHealthy:
+        currentlyHealthyStat:
           mixinUtils.dashboards.statPanel(
             'Currently Healthy',
             'short',
@@ -150,7 +141,7 @@ local grid = g.util.grid;
             description='The current number of healthy pods for the selected PDB.',
           ),
 
-        expectedPods:
+        expectedPodsStat:
           mixinUtils.dashboards.statPanel(
             'Expected Pods',
             'short',
@@ -158,99 +149,167 @@ local grid = g.util.grid;
             description='The expected number of pods for the selected PDB.',
           ),
 
-        disruptionsAllowedByPdb:
-          mixinUtils.dashboards.timeSeriesPanel(
-            'Disruptions Allowed by PDB',
+        namespaceSummaryTable:
+          mixinUtils.dashboards.tablePanel(
+            'Summary',
             'short',
-            queries.disruptionsAllowedByPdb,
-            '{{ poddisruptionbudget }}',
-            calcs=['lastNotNull', 'mean', 'max'],
-            description='The number of pod disruptions allowed per PDB.',
+            [
+              {
+                expr: queries.disruptionsAllowedNamespace,
+                legend: 'Disruptions Allowed',
+              },
+              {
+                expr: queries.desiredHealthyNamespace,
+                legend: 'Desired Healthy',
+              },
+              {
+                expr: queries.currentlyHealthyNamespace,
+                legend: 'Currently Healthy',
+              },
+              {
+                expr: queries.expectedPodsNamespace,
+                legend: 'Expected Pods',
+              },
+            ],
+            description='Summary of all PDBs in the selected namespace.',
+            sortBy={ name: 'Pod Disruption Budget', desc: false },
+            transformations=[
+              tbQueryOptions.transformation.withId('merge'),
+              tbQueryOptions.transformation.withId('organize') +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    poddisruptionbudget: 'Pod Disruption Budget',
+                    namespace: 'Namespace',
+                    'Value #A': 'Disruptions Allowed',
+                    'Value #B': 'Desired Healthy',
+                    'Value #C': 'Currently Healthy',
+                    'Value #D': 'Expected Pods',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    poddisruptionbudget: 1,
+                    'Value #A': 2,
+                    'Value #B': 3,
+                    'Value #C': 4,
+                    'Value #D': 5,
+                  },
+                  excludeByName: {
+                    Time: true,
+                    job: true,
+                  },
+                }
+              ),
+            ],
+            overrides=[
+              tbOverride.byName.new('Disruptions Allowed') +
+              tbOverride.byName.withPropertiesFromOptions(
+                tbFieldConfig.defaults.custom.withCellOptions(
+                  { type: 'color-text' }
+                ) +
+                tbStandardOptions.thresholds.withMode('absolute') +
+                tbStandardOptions.thresholds.withSteps([
+                  tbStandardOptions.threshold.step.withValue(0) +
+                  tbStandardOptions.threshold.step.withColor('red'),
+                  tbStandardOptions.threshold.step.withValue(0.1) +
+                  tbStandardOptions.threshold.step.withColor('green'),
+                ])
+              ),
+            ],
           ),
 
-        desiredHealthyByPdb:
+        statusTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
-            'Desired Healthy by PDB',
+            'Status',
             'short',
-            queries.desiredHealthyByPdb,
-            '{{ poddisruptionbudget }}',
-            calcs=['lastNotNull', 'mean', 'max'],
-            description='The desired number of healthy pods per PDB.',
-          ),
-
-        currentlyHealthyByPdb:
-          mixinUtils.dashboards.timeSeriesPanel(
-            'Currently Healthy by PDB',
-            'short',
-            queries.currentlyHealthyByPdb,
-            '{{ poddisruptionbudget }}',
-            calcs=['lastNotNull', 'mean', 'max'],
-            description='The current number of healthy pods per PDB.',
-          ),
-
-        expectedPodsByPdb:
-          mixinUtils.dashboards.timeSeriesPanel(
-            'Expected Pods by PDB',
-            'short',
-            queries.expectedPodsByPdb,
-            '{{ poddisruptionbudget }}',
-            calcs=['lastNotNull', 'mean', 'max'],
-            description='The expected number of pods per PDB.',
-          ),
+            [
+              {
+                expr: queries.disruptionsAllowed,
+                legend: 'Disruptions Allowed',
+              },
+              {
+                expr: queries.desiredHealthy,
+                legend: 'Desired Healthy',
+              },
+              {
+                expr: queries.currentlyHealthy,
+                legend: 'Currently Healthy',
+              },
+              {
+                expr: queries.expectedPods,
+                legend: 'Expected Pods',
+              },
+            ],
+            description='Status metrics for the selected PDB over time.',
+          ) +
+          tsStandardOptions.withOverrides([
+            tsOverride.byName.new('Currently Healthy') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('yellow')
+            ),
+            tsOverride.byName.new('Disruptions Allowed') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('red')
+            ),
+            tsOverride.byName.new('Desired Healthy') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('green')
+            ),
+            tsOverride.byName.new('Expected Pods') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('blue')
+            ),
+          ]),
       };
 
       local rows =
         [
-          row.new('Summary') +
+          row.new('$namespace Namespace Summary') +
           row.gridPos.withX(0) +
           row.gridPos.withY(0) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            panels.disruptionsAllowed,
-            panels.desiredHealthy,
-            panels.currentlyHealthy,
-            panels.expectedPods,
-          ],
-          panelWidth=6,
-          panelHeight=4,
-          startY=1
-        ) +
-        [
-          row.new('Pod Disruption Budgets') +
+          panels.namespaceSummaryTable +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(1) +
+          tablePanel.gridPos.withW(24) +
+          tablePanel.gridPos.withH(7),
+          row.new('$pdb Summary') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(5) +
+          row.gridPos.withY(8) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
         grid.makeGrid(
           [
-            panels.disruptionsAllowedByPdb,
-            panels.desiredHealthyByPdb,
+            panels.disruptionsAllowedStat,
+            panels.desiredHealthyStat,
+            panels.currentlyHealthyStat,
+            panels.expectedPodsStat,
           ],
-          panelWidth=12,
-          panelHeight=6,
-          startY=6
+          panelWidth=6,
+          panelHeight=3,
+          startY=9
         ) +
-        grid.makeGrid(
-          [
-            panels.currentlyHealthyByPdb,
-            panels.expectedPodsByPdb,
-          ],
-          panelWidth=12,
-          panelHeight=6,
-          startY=12
-        );
+        [
+          panels.statusTimeSeries +
+          timeSeriesPanel.gridPos.withX(0) +
+          timeSeriesPanel.gridPos.withY(12) +
+          timeSeriesPanel.gridPos.withW(24) +
+          timeSeriesPanel.gridPos.withH(8),
+        ];
 
       mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
-        'Kubernetes / Autoscaling / PDB',
+        'Kubernetes / Autoscaling / Pod Disruption Budget',
       ) +
-      dashboard.withDescription('A dashboard that monitors Pod Disruption Budgets. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
+      dashboard.withDescription('A dashboard that monitors Kubernetes and focuses on giving a overview for pod disruption budgets. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
       dashboard.withUid($._config.pdbDashboardUid) +
-      dashboard.withTags($._config.tags + ['pdb']) +
+      dashboard.withTags($._config.tags + ['kubernetes-core']) +
       dashboard.withTimezone('utc') +
       dashboard.withEditable(true) +
       dashboard.time.withFrom('now-6h') +
@@ -259,6 +318,9 @@ local grid = g.util.grid;
       dashboard.withLinks(
         mixinUtils.dashboards.dashboardLinks('Kubernetes / Autoscaling', $._config, dropdown=true)
       ) +
-      dashboard.withPanels(rows),
+      dashboard.withPanels(rows) +
+      dashboard.withAnnotations(
+        mixinUtils.dashboards.annotations($._config, defaultFilters)
+      ),
   },
 }
