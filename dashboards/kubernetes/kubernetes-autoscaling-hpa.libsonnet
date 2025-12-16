@@ -177,10 +177,8 @@ local tbQueryOptions = tablePanel.queryOptions;
             'short',
             queries.metricTargets,
             description='Configured metric targets for the HPA.',
+            sortBy={ name: 'Horizontal Pod Autoscaler', desc: false },
             transformations=[
-              tbQueryOptions.transformation.withId(
-                'merge'
-              ),
               tbQueryOptions.transformation.withId(
                 'organize'
               ) +
@@ -188,7 +186,7 @@ local tbQueryOptions = tablePanel.queryOptions;
                 {
                   renameByName: {
                     namespace: 'Namespace',
-                    horizontalpodautoscaler: 'Horitzontal Pod Autoscaler',
+                    horizontalpodautoscaler: 'Horizontal Pod Autoscaler',
                     metric_name: 'Metric Name',
                     metric_target_type: 'Metric Target Type',
                     'Value #A': 'Threshold',
@@ -234,12 +232,13 @@ local tbQueryOptions = tablePanel.queryOptions;
           row.gridPos.withX(0) +
           row.gridPos.withY(4) +
           row.gridPos.withW(24) +
-          row.gridPos.withH(10),
+          row.gridPos.withH(8),
           row.new('$horizontalpodautoscaler / $metric_name / $metric_target_type') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(14) +
+          row.gridPos.withY(12) +
           row.gridPos.withW(24) +
-          row.gridPos.withH(1),
+          row.gridPos.withH(1) +
+          row.withRepeat('metric_target_type'),
         ] +
         grid.makeGrid(
           [
@@ -248,7 +247,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           ],
           panelWidth=24,
           panelHeight=6,
-          startY=15
+          startY=13
         );
 
       mixinUtils.dashboards.bypassDashboardValidation +
@@ -257,7 +256,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       ) +
       dashboard.withDescription('A dashboard that monitors Horizontal Pod Autoscalers. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
       dashboard.withUid($._config.hpaDashboardUid) +
-      dashboard.withTags($._config.tags + ['hpa']) +
+      dashboard.withTags($._config.tags + ['kubernetes-core']) +
       dashboard.withTimezone('utc') +
       dashboard.withEditable(true) +
       dashboard.time.withFrom('now-6h') +

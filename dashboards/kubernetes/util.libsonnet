@@ -10,6 +10,7 @@ local query = variable.query;
   filters(config):: {
     local this = self,
     cluster: '%(clusterLabel)s="$cluster"' % config,
+    clusterMulti: '%(clusterLabel)s=~"$cluster"' % config,
     clusterLabel: config.clusterLabel,
     job: 'job=~"$job"',
     namespace: 'namespace=~"$namespace"',
@@ -33,6 +34,12 @@ local query = variable.query;
       %(namespace)s
     ||| % this,
 
+    baseMulti: |||
+      %(clusterMulti)s,
+      %(job)s,
+      %(namespace)s
+    ||| % this,
+
     // PDB
     withPdb: |||
       %(base)s,
@@ -46,14 +53,12 @@ local query = variable.query;
     ||| % this,
 
     withHpaMetricName: |||
-      %(base)s,
-      %(hpa)s,
+      %(withHpa)s,
       %(hpaMetricName)s
     ||| % this,
 
     withHpaMetricTargetType: |||
-      %(base)s,
-      %(hpaMetricName)s,
+      %(withHpaMetricName)s,
       %(hpaMetricTargetType)s
     ||| % this,
 
@@ -94,6 +99,7 @@ local query = variable.query;
       query.generalOptions.withLabel('Cluster') +
       query.refresh.onLoad() +
       query.refresh.onTime() +
+      query.selectionOptions.withMulti(config.vpa.clusterAggregation) +
       (
         if config.showMultiCluster
         then query.generalOptions.showOnDashboard.withLabelAndValue()
@@ -127,7 +133,7 @@ local query = variable.query;
     pdb:
       query.new(
         'poddisruptionbudget',
-        'label_values(kube_poddisruptionbudget_status_current_healthy{%(cluster)s, %(namespace)s}, poddisruptionbudget)' % defaultFilters,
+        'label_values(kube_poddisruptionbudget_status_current_healthy{%(cluster)s, %(job)s, %(namespace)s}, poddisruptionbudget)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
@@ -164,7 +170,7 @@ local query = variable.query;
     hpa:
       query.new(
         'horizontalpodautoscaler',
-        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s}, horizontalpodautoscaler)' % defaultFilters,
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(job)s, %(namespace)s}, horizontalpodautoscaler)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
@@ -175,7 +181,7 @@ local query = variable.query;
     hpaMetricName:
       query.new(
         'metric_name',
-        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, %(hpa)s}, metric_name)' % defaultFilters,
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(job)s, %(namespace)s, %(hpa)s}, metric_name)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
@@ -186,12 +192,13 @@ local query = variable.query;
     hpaMetricTargetType:
       query.new(
         'metric_target_type',
-        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(namespace)s, %(hpa)s, %(hpaMetricName)s}, metric_target_type)' % defaultFilters,
+        'label_values(kube_horizontalpodautoscaler_spec_target_metric{%(cluster)s, %(job)s, %(namespace)s, %(hpa)s, %(hpaMetricName)s}, metric_target_type)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
       query.generalOptions.withLabel('Metric Target Type') +
       query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
@@ -222,7 +229,7 @@ local query = variable.query;
     vpa:
       query.new(
         'verticalpodautoscaler',
-        'label_values(kube_customresource_verticalpodautoscaler_labels{%(cluster)s, %(namespace)s}, verticalpodautoscaler)' % defaultFilters,
+        'label_values(kube_customresource_verticalpodautoscaler_labels{%(cluster)s, %(job)s, %(namespace)s}, verticalpodautoscaler)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +
@@ -233,7 +240,7 @@ local query = variable.query;
     vpaContainer:
       query.new(
         'container',
-        'label_values(kube_customresource_verticalpodautoscaler_status_recommendation_containerrecommendations_target{%(cluster)s, %(namespace)s, %(vpa)s}, container)' % defaultFilters,
+        'label_values(kube_customresource_verticalpodautoscaler_status_recommendation_containerrecommendations_target{%(cluster)s, %(job)s, %(namespace)s, %(vpa)s}, container)' % defaultFilters,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +

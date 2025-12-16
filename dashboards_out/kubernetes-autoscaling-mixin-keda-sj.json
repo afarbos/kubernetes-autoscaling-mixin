@@ -84,7 +84,7 @@
                },
                "exemplar": false,
                "expr": "sum(\n  keda_resource_registered_total{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$operator_namespace\"\n,\n    type=\"scaled_job\"\n  }\n) by (exported_namespace, type)\n",
-               "legendFormat": "{{ type }}"
+               "legendFormat": "{{ exported_namespace}} / {{ type }}"
             }
          ],
          "title": "Resources Registered by Namespace",
@@ -272,13 +272,13 @@
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "Current metric values for all scaled jobs.",
+         "description": "This table has links to the Workload dashboard for the scaled Job, which can be used to see the current resource usage. The Workload dashboard can be found at [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin) and requires ID customization.",
          "fieldConfig": {
             "defaults": {
                "links": [
                   {
                      "targetBlank": true,
-                     "title": "Go to HPA",
+                     "title": "Go to Scaled Job",
                      "url": "/d/this-needs-to-be-customized/kubernetes-compute-resources-workload?var-namespace=${__data.fields.exported_namespace}&var-type=ScaledJob&var-workload=${__data.fields.scaledObject}"
                   }
                ],
@@ -302,7 +302,7 @@
             },
             "sortBy": [
                {
-                  "desc": true,
+                  "desc": false,
                   "displayName": "Scaled Job"
                }
             ]
@@ -338,7 +338,7 @@
                   "renameByName": {
                      "exported_namespace": "Resource Namespace",
                      "metric": "Metric",
-                     "scaledObject": "Scaled Object",
+                     "scaledObject": "Scaled Job",
                      "scaler": "Scaler",
                      "value": "Value"
                   }
@@ -609,7 +609,7 @@
             "hide": 2,
             "label": "Cluster",
             "name": "cluster",
-            "query": "label_values(kube_pod_info{job=~\"kube-state-metrics\"}, cluster)",
+            "query": "label_values(keda_build_info{}, cluster)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

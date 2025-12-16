@@ -236,7 +236,7 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 10,
+            "h": 8,
             "w": 24,
             "x": 0,
             "y": 4
@@ -245,7 +245,13 @@
          "options": {
             "footer": {
                "enablePagination": true
-            }
+            },
+            "sortBy": [
+               {
+                  "desc": false,
+                  "displayName": "Horizontal Pod Autoscaler"
+               }
+            ]
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -254,16 +260,13 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\",\nmetric_name=~\"$metric_name\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n,\nmetric_name=~\"$metric_name\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
                "format": "table",
                "instant": true
             }
          ],
          "title": "Metric Targets",
          "transformations": [
-            {
-               "id": "merge"
-            },
             {
                "id": "organize",
                "options": {
@@ -280,7 +283,7 @@
                   },
                   "renameByName": {
                      "Value #A": "Threshold",
-                     "horizontalpodautoscaler": "Horitzontal Pod Autoscaler",
+                     "horizontalpodautoscaler": "Horizontal Pod Autoscaler",
                      "metric_name": "Metric Name",
                      "metric_target_type": "Metric Target Type",
                      "namespace": "Namespace"
@@ -296,9 +299,10 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 14
+            "y": 12
          },
          "id": 7,
+         "repeat": "metric_target_type",
          "title": "$horizontalpodautoscaler / $metric_name / $metric_target_type",
          "type": "row"
       },
@@ -321,7 +325,7 @@
             "h": 6,
             "w": 24,
             "x": 0,
-            "y": 15
+            "y": 13
          },
          "id": 8,
          "options": {
@@ -349,7 +353,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "sum(\n  kube_horizontalpodautoscaler_status_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nmetric_name=~\"$metric_name\",\nmetric_target_type=~\"$metric_target_type\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "expr": "sum(\n  kube_horizontalpodautoscaler_status_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n,\nmetric_name=~\"$metric_name\"\n,\nmetric_target_type=~\"$metric_target_type\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
                "legendFormat": "{{ metric_target_type }} / {{ metric_name }}"
             },
             {
@@ -358,7 +362,7 @@
                   "uid": "$datasource"
                },
                "exemplar": false,
-               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nmetric_name=~\"$metric_name\",\nmetric_target_type=~\"$metric_target_type\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
+               "expr": "sum(\n  kube_horizontalpodautoscaler_spec_target_metric{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$namespace\"\n,\nhorizontalpodautoscaler=~\"$horizontalpodautoscaler\"\n,\nmetric_name=~\"$metric_name\"\n,\nmetric_target_type=~\"$metric_target_type\"\n\n  }\n) by (job, namespace, horizontalpodautoscaler, metric_name, metric_target_type)\n",
                "legendFormat": "Threshold / {{ metric_name }}"
             }
          ],
@@ -384,7 +388,7 @@
             "h": 6,
             "w": 24,
             "x": 0,
-            "y": 21
+            "y": 19
          },
          "id": 9,
          "options": {
@@ -452,7 +456,7 @@
       "kubernetes",
       "autoscaling",
       "kubernetes-autoscaling-mixin",
-      "hpa"
+      "kubernetes-core"
    ],
    "templating": {
       "list": [
@@ -474,6 +478,7 @@
             },
             "hide": 2,
             "label": "Cluster",
+            "multi": false,
             "name": "cluster",
             "query": "label_values(kube_pod_info{job=~\"kube-state-metrics\"}, cluster)",
             "refresh": 2,
@@ -512,7 +517,7 @@
             },
             "label": "HPA",
             "name": "horizontalpodautoscaler",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\"}, horizontalpodautoscaler)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\"}, horizontalpodautoscaler)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -524,7 +529,7 @@
             },
             "label": "Metric Name",
             "name": "metric_name",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=~\"$horizontalpodautoscaler\"}, metric_name)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", horizontalpodautoscaler=~\"$horizontalpodautoscaler\"}, metric_name)",
             "refresh": 2,
             "sort": 1,
             "type": "query"
@@ -534,10 +539,11 @@
                "type": "prometheus",
                "uid": "${datasource}"
             },
+            "includeAll": true,
             "label": "Metric Target Type",
             "multi": true,
             "name": "metric_target_type",
-            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", namespace=~\"$namespace\", horizontalpodautoscaler=~\"$horizontalpodautoscaler\", metric_name=~\"$metric_name\"}, metric_target_type)",
+            "query": "label_values(kube_horizontalpodautoscaler_spec_target_metric{cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\", horizontalpodautoscaler=~\"$horizontalpodautoscaler\", metric_name=~\"$metric_name\"}, metric_target_type)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

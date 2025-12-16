@@ -542,6 +542,7 @@
             },
             "hide": 2,
             "label": "Cluster",
+            "multi": false,
             "name": "cluster",
             "query": "label_values(kube_pod_info{job=~\"kube-state-metrics\"}, cluster)",
             "refresh": 2,
@@ -582,7 +583,7 @@
             "label": "Pod Disruption Budget",
             "multi": true,
             "name": "poddisruptionbudget",
-            "query": "label_values(kube_poddisruptionbudget_status_current_healthy{cluster=\"$cluster\", namespace=~\"$namespace\"}, poddisruptionbudget)",
+            "query": "label_values(kube_poddisruptionbudget_status_current_healthy{cluster=\"$cluster\", job=~\"$job\", namespace=~\"$namespace\"}, poddisruptionbudget)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

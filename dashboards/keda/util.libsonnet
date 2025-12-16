@@ -23,32 +23,39 @@ local query = variable.query;
       %(job)s,
       %(operatorNamespace)s
     ||| % this,
+
     withResourceNamespace: |||
       %(base)s,
       %(resourceNamespace)s
     ||| % this,
+
     withScaledObject: |||
       %(withResourceNamespace)s,
       type="scaledobject",
       %(scaledObject)s
     ||| % this,
+
     withScaledJob: |||
       %(withResourceNamespace)s,
       type="scaledjob",
       %(scaledJob)s
     ||| % this,
+
     withScaledObjectScaler: |||
       %(withScaledObject)s,
       %(scaler)s
     ||| % this,
+
     withScaledJobScaler: |||
       %(withScaledJob)s,
       %(scaler)s
     ||| % this,
+
     withScaledObjectMetric: |||
       %(withScaledObjectScaler)s,
       %(metric)s
     ||| % this,
+
     withScaledJobMetric: |||
       %(withScaledJobScaler)s,
       %(metric)s
@@ -77,7 +84,7 @@ local query = variable.query;
     cluster:
       query.new(
         config.clusterLabel,
-        'label_values(kube_pod_info{%(kubeStateMetricsSelector)s}, cluster)' % config,
+        'label_values(keda_build_info{}, cluster)' % config,
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +

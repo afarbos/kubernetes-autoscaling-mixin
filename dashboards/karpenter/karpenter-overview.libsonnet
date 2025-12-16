@@ -820,6 +820,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
                 tbOverride.byName.new('CPU Utilization') +
                 tbOverride.byName.withPropertiesFromOptions(
                   tbStandardOptions.withUnit('percent') +
+                  tbStandardOptions.withMin(0) +
                   tbStandardOptions.withMax(100) +
                   tbStandardOptions.thresholds.withMode('percentage') +
                   tbStandardOptions.thresholds.withSteps([
@@ -835,6 +836,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
                 tbOverride.byName.new('Memory Utilization') +
                 tbOverride.byName.withPropertiesFromOptions(
                   tbStandardOptions.withUnit('percent') +
+                  tbStandardOptions.withMin(0) +
                   tbStandardOptions.withMax(100) +
                   tbStandardOptions.thresholds.withMode('percentage') +
                   tbStandardOptions.thresholds.withSteps([

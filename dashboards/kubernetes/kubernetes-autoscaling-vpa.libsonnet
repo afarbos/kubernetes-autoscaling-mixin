@@ -40,7 +40,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
               label_replace(
                 max(
                   kube_pod_container_resource_requests{
-                    %(base)s,
+                    %(baseMulti)s,
                     resource="cpu"
                   }
                 ) by (%(clusterLabel)s, job, namespace, pod, container, resource),
@@ -50,7 +50,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
               0 *
               max(
                 kube_customresource_verticalpodautoscaler_status_recommendation_containerrecommendations_target{
-                  %(base)s,
+                  %(baseMulti)s,
                   resource="cpu"
                 }
               ) by (%(clusterLabel)s, job, namespace, verticalpodautoscaler, container, resource)
@@ -63,7 +63,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
           cpuRecommendationTarget: |||
             max(
               kube_customresource_verticalpodautoscaler_status_recommendation_containerrecommendations_target{
-                %(base)s,
+                %(baseMulti)s,
                 resource="cpu"
               }
             ) by (job, %(clusterLabel)s, namespace, verticalpodautoscaler, container, resource)
@@ -106,7 +106,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
           cpuRequestOverTime: |||
             max(
               kube_pod_container_resource_requests{
-                %(base)s,
+                %(baseMulti)s,
                 pod=~"$verticalpodautoscaler-.*",
                 resource=~"cpu",
                 container=~"$container"
@@ -463,7 +463,6 @@ local tbFieldConfig = tablePanel.fieldConfig;
                   legend: clusterInLegend('Limits'),
                 },
               ],
-              calcs=['lastNotNull', 'mean', 'max'],
               description='CPU recommendations, usage, requests, and limits over time for the selected VPA.',
               fillOpacity=0,
             ),
@@ -498,7 +497,6 @@ local tbFieldConfig = tablePanel.fieldConfig;
                   legend: clusterInLegend('Limits'),
                 },
               ],
-              calcs=['lastNotNull', 'mean', 'max'],
               description='Memory recommendations, usage, requests, and limits over time for the selected VPA.',
               fillOpacity=0,
             ),
@@ -556,7 +554,7 @@ local tbFieldConfig = tablePanel.fieldConfig;
         ) +
         dashboard.withDescription('A dashboard that monitors Vertical Pod Autoscalers. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
         dashboard.withUid($._config.vpaDashboardUid) +
-        dashboard.withTags($._config.tags + ['vpa']) +
+        dashboard.withTags($._config.tags + ['kubernetes-core']) +
         dashboard.withTimezone('utc') +
         dashboard.withEditable(true) +
         dashboard.time.withFrom('now-6h') +

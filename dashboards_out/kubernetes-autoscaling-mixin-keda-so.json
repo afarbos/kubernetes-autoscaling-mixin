@@ -84,7 +84,7 @@
                },
                "exemplar": false,
                "expr": "sum(\n  keda_resource_registered_total{\n    cluster=\"$cluster\",\njob=~\"$job\",\nnamespace=~\"$operator_namespace\"\n,\n    type=\"scaled_object\"\n  }\n) by (exported_namespace, type)\n",
-               "legendFormat": "{{ type }}"
+               "legendFormat": "{{ exported_namespace}} / {{ type }}"
             }
          ],
          "title": "Resources Registered by Namespace",
@@ -331,7 +331,7 @@
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "Current metric values for all scaled objects.",
+         "description": "This table has links to the HPA for the scaled object, which can be used to see the current scaling status and history. The HPA dashboard can be found at [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).",
          "fieldConfig": {
             "defaults": {
                "links": [
@@ -361,7 +361,7 @@
             },
             "sortBy": [
                {
-                  "desc": true,
+                  "desc": false,
                   "displayName": "Scaled Object"
                }
             ]
@@ -722,7 +722,7 @@
             "hide": 2,
             "label": "Cluster",
             "name": "cluster",
-            "query": "label_values(kube_pod_info{job=~\"kube-state-metrics\"}, cluster)",
+            "query": "label_values(keda_build_info{}, cluster)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

@@ -121,7 +121,7 @@ local tbPanelOptions = tablePanel.panelOptions;
               'Resources Registered by Namespace',
               'short',
               queries.resourcesRegisteredByNamespace,
-              '{{ type }}',
+              '{{ exported_namespace}} / {{ type }}',
               description='The number of scaled job resources registered by namespace.',
               stack='normal',
             ),
@@ -161,8 +161,8 @@ local tbPanelOptions = tablePanel.panelOptions;
               'Scale Target Values',
               'short',
               queries.scaleTargetValues,
-              description='Current metric values for all scaled jobs.',
-              sortBy={ name: 'Scaled Job', desc: true },
+              description='This table has links to the Workload dashboard for the scaled Job, which can be used to see the current resource usage. The Workload dashboard can be found at [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin) and requires ID customization.',
+              sortBy={ name: 'Scaled Job', desc: false },
               transformations=[
                 tbQueryOptions.transformation.withId(
                   'organize'
@@ -170,7 +170,7 @@ local tbPanelOptions = tablePanel.panelOptions;
                 tbQueryOptions.transformation.withOptions(
                   {
                     renameByName: {
-                      scaledObject: 'Scaled Object',
+                      scaledObject: 'Scaled Job',
                       exported_namespace: 'Resource Namespace',
                       scaler: 'Scaler',
                       metric: 'Metric',
@@ -191,7 +191,7 @@ local tbPanelOptions = tablePanel.panelOptions;
                 ),
               ],
               links=[
-                tbPanelOptions.link.withTitle('Go to HPA') +
+                tbPanelOptions.link.withTitle('Go to Scaled Job') +
                 tbPanelOptions.link.withUrl(
                   '/d/%s/kubernetes-compute-resources-workload?var-namespace=${__data.fields.exported_namespace}&var-type=ScaledJob&var-workload=${__data.fields.scaledObject}' % $._config.keda.k8sResourcesWorkloadDashboardUid
                 ) +

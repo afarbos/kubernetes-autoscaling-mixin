@@ -138,7 +138,7 @@ local tbPanelOptions = tablePanel.panelOptions;
               'Resources Registered by Namespace',
               'short',
               queries.resourcesRegisteredByNamespace,
-              '{{ type }}',
+              '{{ exported_namespace}} / {{ type }}',
               description='The number of scaled object resources registered by namespace.',
               stack='normal',
             ),
@@ -188,8 +188,8 @@ local tbPanelOptions = tablePanel.panelOptions;
               'Scale Target Values',
               'short',
               queries.scaleTargetValues,
-              description='Current metric values for all scaled objects.',
-              sortBy={ name: 'Scaled Object', desc: true },
+              description='This table has links to the HPA for the scaled object, which can be used to see the current scaling status and history. The HPA dashboard can be found at [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).',
+              sortBy={ name: 'Scaled Object', desc: false },
               transformations=[
                 tbQueryOptions.transformation.withId(
                   'organize'
