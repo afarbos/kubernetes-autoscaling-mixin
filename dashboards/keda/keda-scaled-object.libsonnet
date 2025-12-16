@@ -1,536 +1,355 @@
+local mixinUtils = import 'github.com/adinhodovic/mixin-utils/utils.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+local util = import 'util.libsonnet';
 
 local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
 
-local variable = dashboard.variable;
-local datasource = variable.datasource;
-local query = variable.query;
-local prometheus = g.query.prometheus;
-
-local timeSeries = g.panel.timeSeries;
 local tablePanel = g.panel.table;
 
-// Timeseries
-local tsOptions = timeSeries.options;
-local tsStandardOptions = timeSeries.standardOptions;
-local tsQueryOptions = timeSeries.queryOptions;
-local tsFieldConfig = timeSeries.fieldConfig;
-local tsCustom = tsFieldConfig.defaults.custom;
-local tsLegend = tsOptions.legend;
-
 // Table
-local tbOptions = tablePanel.options;
-local tbStandardOptions = tablePanel.standardOptions;
 local tbQueryOptions = tablePanel.queryOptions;
 local tbPanelOptions = tablePanel.panelOptions;
 
 {
-  local timeSeriesPanel(title, unit, query, legend, calcs=['mean', 'max'], stack='none') =
-    timeSeries.new(title) +
-    tsQueryOptions.withTargets(
-      prometheus.new(
-        '$datasource',
-        query,
-      ) +
-      prometheus.withLegendFormat(
-        legend
-      )
-    ) +
-    tsStandardOptions.withUnit(unit) +
-    tsOptions.tooltip.withMode('multi') +
-    tsOptions.tooltip.withSort('desc') +
-    tsLegend.withShowLegend() +
-    tsLegend.withDisplayMode('table') +
-    tsLegend.withPlacement('right') +
-    tsLegend.withCalcs(calcs) +
-    tsLegend.withSortBy('Mean') +
-    tsLegend.withSortDesc(true) +
-    (
-      if stack == 'normal' then
-        tsCustom.withFillOpacity(100) +
-        tsCustom.stacking.withMode(stack) +
-        tsCustom.withLineWidth(0)
-      else {}
-    ),
+  grafanaDashboards+:: {
+    'kubernetes-autoscaling-mixin-keda-so.json':
+      if !$._config.keda.enabled then {} else
 
-  grafanaDashboards+:: std.prune({
+        local defaultVariables = util.variables($._config);
 
-    local datasourceVariable =
-      datasource.new(
-        'datasource',
-        'prometheus',
-      ) +
-      datasource.generalOptions.withLabel('Data source') +
-      {
-        current: {
-          selected: true,
-          text: $._config.datasourceName,
-          value: $._config.datasourceName,
-        },
-      },
+        local variables = [
+          defaultVariables.datasource,
+          defaultVariables.cluster,
+          defaultVariables.scaledObjectJob,
+          defaultVariables.scaledObjectOperatorNamespace,
+          defaultVariables.scaledObjectResourceNamespace,
+          defaultVariables.scaledObject,
+          defaultVariables.scalerForScaledObject,
+          defaultVariables.metricForScaledObject,
+        ];
 
-    local clusterVariable =
-      query.new(
-        $._config.clusterLabel,
-        'label_values(keda_scaled_object_paused{}, cluster)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Cluster') +
-      query.refresh.onLoad() +
-      query.refresh.onTime() +
-      (
-        if $._config.showMultiCluster
-        then query.generalOptions.showOnDashboard.withLabelAndValue()
-        else query.generalOptions.showOnDashboard.withNothing()
-      ),
+        local defaultFilters = util.filters($._config);
 
-    local jobVariable =
-      query.new(
-        'job',
-        'label_values(keda_scaled_object_paused{%(clusterLabel)s="$cluster"}, job)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Job') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+        local queries = {
+          resourcesRegisteredByNamespace: |||
+            sum(
+              keda_resource_registered_total{
+                %(base)s,
+                type="scaled_object"
+              }
+            ) by (exported_namespace, type)
+          ||| % defaultFilters,
 
-    local operatorNamespaceVariable =
-      query.new(
-        'operator_namespace',
-        'label_values(keda_scaled_object_paused{%(clusterLabel)s="$cluster", job=~"$job"}, namespace)' % $._config
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Operator Namespace') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+          triggersByType: |||
+            sum(
+              keda_trigger_registered_total{
+                %(base)s
+              }
+            ) by (type)
+          ||| % defaultFilters,
 
-    local resourceNamespaceVariable =
-      query.new(
-        'resource_namespace',
-        'label_values(keda_scaled_object_paused{%(clusterLabel)s="$cluster", job=~"$job", namespace=~"$operator_namespace"}, exported_namespace)' % $._config
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Resource Namespace') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+          scaledObjectsErrors: |||
+            sum(
+              increase(
+                keda_scaled_object_errors_total{
+                  %(withResourceNamespace)s
+                }[$__rate_interval]
+              )
+            ) by (exported_namespace, scaledObject)
+          ||| % defaultFilters,
 
-    local scaledObjectVariable =
-      query.new(
-        'scaled_object',
-        'label_values(keda_scaled_object_paused{%(clusterLabel)s="$cluster", job=~"$job", namespace=~"$operator_namespace", exported_namespace=~"$resource_namespace"}, scaledObject)' % $._config
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Scaled Object') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+          scalerDetailErrors: |||
+            sum(
+              increase(
+                keda_scaler_detail_errors_total{
+                  %(withResourceNamespace)s,
+                  type="scaledobject"
+                }[$__rate_interval]
+              )
+            ) by (exported_namespace, scaledObject, scaler)
+          ||| % defaultFilters,
 
-    local scalerVariable =
-      query.new(
-        'scaler',
-        'label_values(keda_scaler_active{%(clusterLabel)s="$cluster", job=~"$job", namespace=~"$operator_namespace", exported_namespace="$resource_namespace", scaledObject="$scaled_object"}, scaler)' % $._config
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Scaler') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+          scaledObjectsPaused: |||
+            sum(
+              keda_scaled_object_paused{
+                %(withResourceNamespace)s
+              }
+            ) by (exported_namespace, scaledObject)
+            > 0
+          ||| % defaultFilters,
 
-    local metricVariable =
-      query.new(
-        'metric',
-        'label_values(keda_scaler_active{%(clusterLabel)s="$cluster", job=~"$job", namespace=~"$operator_namespace", exported_namespace="$resource_namespace", scaledObject=~"$scaled_object", scaler=~"$scaler"}, metric)' % $._config
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Metric') +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+          scaleTargetValues: |||
+            sum(
+              keda_scaler_metrics_value{
+                %(withResourceNamespace)s,
+                type="scaledobject"
+              }
+            ) by (job, exported_namespace, scaledObject, scaler, metric)
+          ||| % defaultFilters,
 
-    local variables = [
-      datasourceVariable,
-      clusterVariable,
-      jobVariable,
-      operatorNamespaceVariable,
-      resourceNamespaceVariable,
-      scaledObjectVariable,
-      scalerVariable,
-      metricVariable,
-    ],
+          scaledObjectPaused: |||
+            sum(
+              keda_scaled_object_paused{
+                %(withScaledObject)s
+              }
+            ) by (exported_namespace, scaledObject)
+          ||| % defaultFilters,
 
-    local queries = {
-      resourcesRegisteredByNamespaceQuery: |||
-        sum(
-          keda_resource_registered_total{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace=~"$operator_namespace",
-            type="scaled_object"
-          }
-        ) by (exported_namespace, type)
-      ||| % $._config,
+          scaledObjectActive: |||
+            sum(
+              keda_scaler_active{
+                %(withScaledObject)s
+              }
+            ) by (exported_namespace, scaledObject)
+          ||| % defaultFilters,
 
-      triggersByTypeQuery: |||
-        sum(
-          keda_trigger_registered_total{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace=~"$operator_namespace",
-          }
-        ) by (type)
-      ||| % $._config,
+          scaledObjectDetailError: |||
+            sum(
+              increase(
+                keda_scaler_detail_errors_total{
+                  %(withScaledObject)s
+                }[$__rate_interval]
+              )
+            ) by (exported_namespace, scaledObject)
+          ||| % defaultFilters,
 
-      scaledObjectsErrorsTotalQuery: |||
-        sum(
-          increase(
-            keda_scaled_object_errors_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job",
-              namespace=~"$operator_namespace",
-              exported_namespace=~"$resource_namespace",
-            }[$__rate_interval]
-          )
-        ) by (exported_namespace, scaledObject)
-      ||| % $._config,
+          scaledObjectMetricValue: |||
+            avg(
+              keda_scaler_metrics_value{
+                %(withScaledObjectMetric)s
+              }
+            ) by (exported_namespace, scaledObject, scaler, metric)
+          ||| % defaultFilters,
 
-      scalerDetailErrorsTotalQuery: |||
-        sum(
-          increase(
-            keda_scaler_detail_errors_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job",
-              namespace=~"$operator_namespace",
-              exported_namespace=~"$resource_namespace",
-              type="scaledobject"
-            }[$__rate_interval]
-          )
-        ) by (exported_namespace, scaledObject, scaler)
-      ||| % $._config,
+          scaledObjectMetricLatency: |||
+            avg(
+              keda_scaler_metrics_latency_seconds{
+                %(withScaledObjectMetric)s
+              }
+            ) by (exported_namespace, scaledObject, scaler, metric)
+          ||| % defaultFilters,
+        };
 
-      scaledObjectsPausedQuery: |||
-        sum(
-          keda_scaled_object_paused{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace=~"$operator_namespace",
-            exported_namespace=~"$resource_namespace"
-          }
-        ) by (exported_namespace, scaledObject)
-        > 0
-      ||| % $._config,
+        local panels = {
+          resourcesRegisteredTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Resources Registered by Namespace',
+              'short',
+              queries.resourcesRegisteredByNamespace,
+              '{{ exported_namespace}} / {{ type }}',
+              description='The number of scaled object resources registered by namespace.',
+              stack='normal',
+            ),
 
-      scaleTargetValuesQuery: |||
-        sum(
-          keda_scaler_metrics_value{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace=~"$operator_namespace",
-            exported_namespace=~"$resource_namespace",
-            type="scaledobject"
-          }
-        ) by (job, exported_namespace, scaledObject, scaler, metric)
-      ||| % $._config,
+          triggersByTypeTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Triggers by Type',
+              'short',
+              queries.triggersByType,
+              '{{ type }}',
+              description='The number of triggers registered by type.',
+              stack='normal',
+            ),
 
-      scaledObjectPausedQuery: |||
-        sum(
-          keda_scaled_object_paused{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace="$operator_namespace",
-            exported_namespace="$resource_namespace",
-            scaledObject="$scaled_object"
-          }
-        ) by (exported_namespace, scaledObject)
-      ||| % $._config,
+          scaledObjectsErrorsTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Objects Errors',
+              'short',
+              queries.scaledObjectsErrors,
+              '{{ scaledObject }}',
+              description='The rate of errors for scaled objects.',
+              stack='normal',
+            ),
 
-      scaledObjectActiveQuery: |||
-        sum(
-          keda_scaler_active{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace="$operator_namespace",
-            exported_namespace="$resource_namespace",
-            type="scaledobject",
-            scaledObject="$scaled_object"
-          }
-        ) by (exported_namespace, scaledObject)
-      ||| % $._config,
+          scalerDetailErrorsTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaler Detail Errors',
+              'short',
+              queries.scalerDetailErrors,
+              '{{ scaledObject }} / {{ scaler }}',
+              description='The rate of scaler detail errors.',
+              stack='normal',
+            ),
 
-      scaledObjectDetailErrorTotalQuery: |||
-        sum(
-          increase(
-            keda_scaler_detail_errors_total{
-              %(clusterLabel)s="$cluster",
-              job=~"$job",
-              namespace="$operator_namespace",
-              exported_namespace="$resource_namespace",
-              type="scaledobject",
-              scaledObject="$scaled_object"
-            }[$__rate_interval]
-          )
-        ) by (exported_namespace, scaledObject)
-      ||| % $._config,
+          scaledObjectsPausedTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Objects Paused',
+              'short',
+              queries.scaledObjectsPaused,
+              '{{ scaledObject }}',
+              description='Scaled objects that are currently paused.',
+              stack='normal',
+            ),
 
-      scaledObjectMetricValueQuery: |||
-        avg(
-          keda_scaler_metrics_value{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace="$operator_namespace",
-            exported_namespace="$resource_namespace",
-            type="scaledobject",
-            scaledObject="$scaled_object",
-            scaler="$scaler",
-            metric="$metric"
-          }
-        ) by (exported_namespace, scaledObject, scaler, metric)
-      ||| % $._config,
+          scaleTargetValuesTable:
+            mixinUtils.dashboards.tablePanel(
+              'Scale Target Values',
+              'short',
+              queries.scaleTargetValues,
+              description='This table has links to the HPA for the scaled object, which can be used to see the current scaling status and history. The HPA dashboard can be found at [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).',
+              sortBy={ name: 'Scaled Object', desc: false },
+              transformations=[
+                tbQueryOptions.transformation.withId(
+                  'organize'
+                ) +
+                tbQueryOptions.transformation.withOptions(
+                  {
+                    renameByName: {
+                      scaledObject: 'Scaled Object',
+                      exported_namespace: 'Resource Namespace',
+                      scaler: 'Scaler',
+                      metric: 'Metric',
+                      value: 'Value',
+                    },
+                    indexByName: {
+                      scaledObject: 0,
+                      exported_namespace: 1,
+                      scaler: 2,
+                      metric: 3,
+                      value: 4,
+                    },
+                    excludeByName: {
+                      Time: true,
+                      job: true,
+                    },
+                  }
+                ),
+              ],
+              links=[
+                tbPanelOptions.link.withTitle('Go to HPA') +
+                tbPanelOptions.link.withUrl(
+                  '/d/%s/kubernetes-autoscaling-horizontal-pod-autoscaler?var-namespace=${__data.fields.namespace}&var-hpa=keda-hpa-${__data.fields.scaledObject}&var-metric_name=${__data.fields.metric}' % $._config.hpaDashboardUid
+                ) +
+                tbPanelOptions.link.withTargetBlank(true),
+              ]
+            ),
 
-      scaledObjectMetricLatencyQuery: |||
-        avg(
-          keda_scaler_metrics_latency_seconds{
-            %(clusterLabel)s="$cluster",
-            job=~"$job",
-            namespace="$operator_namespace",
-            exported_namespace="$resource_namespace",
-            type="scaledobject",
-            scaledObject="$scaled_object",
-            scaler="$scaler",
-            metric="$metric"
-          }
-        ) by (exported_namespace, scaledObject, scaler, metric)
-      ||| % $._config,
-    },
+          scaledObjectPausedTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Object Paused',
+              'short',
+              queries.scaledObjectPaused,
+              '{{ scaledObject }}',
+              description='Whether the selected scaled object is paused.',
+            ),
 
-    local panels = {
-      resourcesRegisteredByNamespaceTimeSeries: timeSeriesPanel(
-        'Resources Registered by Namespace',
-        'short',
-        queries.resourcesRegisteredByNamespaceQuery,
-        '{{ exported_namespace }}/{{ type }}',
-        stack='normal',
-      ),
+          scaledObjectActiveTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Object Active',
+              'short',
+              queries.scaledObjectActive,
+              '{{ scaledObject }}',
+              description='Whether the selected scaled object is active.',
+            ),
 
-      triggersByTypeTimeSeries: timeSeriesPanel(
-        'Triggers by Type',
-        'short',
-        queries.triggersByTypeQuery,
-        '{{ type }}',
-        stack='normal',
-      ),
+          scaledObjectDetailErrorTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Object Detail Errors',
+              'short',
+              queries.scaledObjectDetailError,
+              '{{ scaledObject }}',
+              description='The rate of errors for the selected scaled object.',
+            ),
 
-      scaledTargetValuesTable:
-        tablePanel.new(
-          'Scale Target Values',
-        ) +
-        tbPanelOptions.withDescription('This table has links to the HPA for the scaled object, which can be used to see the current scaling status and history. The HPA dashboard can be found at [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).') +
-        tbStandardOptions.withUnit('short') +
-        tbOptions.withSortBy(
-          tbOptions.sortBy.withDisplayName('Scaled Object') +
-          tbOptions.sortBy.withDesc(true)
-        ) +
-        tbOptions.footer.withEnablePagination(true) +
-        tbQueryOptions.withTargets(
+          scaledObjectMetricValueTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Object Metric Value',
+              'short',
+              queries.scaledObjectMetricValue,
+              '{{ scaledObject }} / {{ scaler }} / {{ metric }}',
+              description='The metric value for the selected scaled object.',
+              stack='normal',
+            ),
+
+          scaledObjectMetricLatencyTimeSeries:
+            mixinUtils.dashboards.timeSeriesPanel(
+              'Scaled Object Metric Latency',
+              's',
+              queries.scaledObjectMetricLatency,
+              '{{ scaledObject }} / {{ scaler }} / {{ metric }}',
+              description='The metric collection latency for the selected scaled object.',
+            ),
+        };
+
+        local rows =
           [
-            prometheus.new(
-              '$datasource',
-              queries.scaleTargetValuesQuery,
-            ) +
-            prometheus.withFormat('table') +
-            prometheus.withInstant(true),
-          ]
+            row.new('Overview') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(0) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.resourcesRegisteredTimeSeries,
+              panels.triggersByTypeTimeSeries,
+            ],
+            panelWidth=12,
+            panelHeight=6,
+            startY=1
+          ) +
+          grid.makeGrid(
+            [
+              panels.scaledObjectsErrorsTimeSeries,
+              panels.scalerDetailErrorsTimeSeries,
+              panels.scaledObjectsPausedTimeSeries,
+            ],
+            panelWidth=8,
+            panelHeight=6,
+            startY=7
+          ) +
+          grid.makeGrid(
+            [
+              panels.scaleTargetValuesTable,
+            ],
+            panelWidth=24,
+            panelHeight=8,
+            startY=13
+          ) +
+          [
+            row.new('Scaled Object $scaled_object / $scaler / $metric') +
+            row.gridPos.withX(0) +
+            row.gridPos.withY(21) +
+            row.gridPos.withW(24) +
+            row.gridPos.withH(1),
+          ] +
+          grid.makeGrid(
+            [
+              panels.scaledObjectPausedTimeSeries,
+              panels.scaledObjectActiveTimeSeries,
+              panels.scaledObjectDetailErrorTimeSeries,
+            ],
+            panelWidth=8,
+            panelHeight=5,
+            startY=22
+          ) +
+          grid.makeGrid(
+            [
+              panels.scaledObjectMetricValueTimeSeries,
+              panels.scaledObjectMetricLatencyTimeSeries,
+            ],
+            panelWidth=24,
+            panelHeight=8,
+            startY=27
+          );
+
+        mixinUtils.dashboards.bypassDashboardValidation +
+        dashboard.new(
+          'Kubernetes / Autoscaling / KEDA / Scaled Object',
         ) +
-        tbQueryOptions.withTransformations([
-          tbQueryOptions.transformation.withId(
-            'organize'
-          ) +
-          tbQueryOptions.transformation.withOptions(
-            {
-              renameByName: {
-                scaledObject: 'Scaled Object',
-                exported_namespace: 'Resource Namespace',
-                scaler: 'Scaler',
-                metric: 'Metric',
-                value: 'Value',
-              },
-              indexByName: {
-                scaledObject: 0,
-                exported_namespace: 1,
-                scaler: 2,
-                metric: 3,
-                value: 4,
-              },
-              excludeByName: {
-                Time: true,
-                job: true,
-              },
-            }
-          ),
-        ]) +
-        tbStandardOptions.withLinks([
-          tbPanelOptions.link.withTitle('Go to HPA') +
-          tbPanelOptions.link.withUrl(
-            '/d/%s/kubernetes-autoscaling-horizontal-pod-autoscaler?var-namespace=${__data.fields.namespace}&var-hpa=keda-hpa-${__data.fields.scaledObject}&var-metric_name=${__data.fields.metric}' % $._config.hpaDashboardUid
-          ) +
-          tbPanelOptions.link.withTargetBlank(true),
-        ]),
-
-      scaledObjectsPausedTimeSeries: timeSeriesPanel(
-        'Scaled Objects Paused',
-        'short',
-        queries.scaledObjectPausedQuery,
-        '{{ scaledObject }}',
-      ),
-
-      scalerDetailErrorsTotalTimeSeries: timeSeriesPanel(
-        'Scaler Detail Errors',
-        'short',
-        queries.scalerDetailErrorsTotalQuery,
-        '{{ scaledObject }} / {{ scaler }}',
-      ),
-
-      scaledObjectsErrorsTimeSeries: timeSeriesPanel(
-        'Scaled Objects Errors',
-        'short',
-        queries.scaledObjectsErrorsTotalQuery,
-        '{{ scaledObject }}',
-      ),
-
-      scaledObjectPausedTimeSeries: timeSeriesPanel(
-        'Scaled Object Paused',
-        'short',
-        queries.scaledObjectPausedQuery,
-        '{{ scaledObject }}',
-      ),
-
-      scaledObjectActiveQuery: timeSeriesPanel(
-        'Scaled Object Active',
-        'short',
-        queries.scaledObjectActiveQuery,
-        '{{ scaledObject }}',
-      ),
-
-      scaledObjectDetailErrorTotalQuery: timeSeriesPanel(
-        'Scaled Object Detail Errors',
-        'short',
-        queries.scaledObjectDetailErrorTotalQuery,
-        '{{ scaledObject }}',
-      ),
-
-      scaledObjectMetricValueQuery: timeSeriesPanel(
-        'Scaled Object Metric Value',
-        'short',
-        queries.scaledObjectMetricValueQuery,
-        '{{ scaledObject }} / {{ scaler }} / {{ metric }}',
-        stack='normal',
-      ),
-
-      scaledObjectMetricLatencyQuery: timeSeriesPanel(
-        'Scaled Object Metric Latency',
-        's',
-        queries.scaledObjectMetricLatencyQuery,
-        '{{ scaledObject }} / {{ scaler }} / {{ metric }}',
-      ),
-    },
-
-    local rows =
-      [
-        row.new('Summary') +
-        row.gridPos.withX(0) +
-        row.gridPos.withY(0) +
-        row.gridPos.withW(24) +
-        row.gridPos.withH(1),
-      ] +
-      grid.wrapPanels(
-        [
-          panels.resourcesRegisteredByNamespaceTimeSeries,
-          panels.triggersByTypeTimeSeries,
-        ],
-        panelWidth=12,
-        panelHeight=6,
-        startY=1,
-      ) +
-      grid.wrapPanels(
-        [
-          panels.scaledObjectsPausedTimeSeries,
-          panels.scaledObjectsErrorsTimeSeries,
-          panels.scalerDetailErrorsTotalTimeSeries,
-        ],
-        panelWidth=8,
-        panelHeight=6,
-        startY=7,
-      ) +
-      grid.wrapPanels(
-        [
-          panels.scaledTargetValuesTable,
-        ],
-        panelWidth=24,
-        panelHeight=8,
-        startY=13,
-      ) +
-      [
-        row.new('Scaled Object $scaled_object / $scaler / $metric') +
-        row.gridPos.withX(0) +
-        row.gridPos.withY(21) +
-        row.gridPos.withW(24) +
-        row.gridPos.withH(1),
-      ] +
-      grid.wrapPanels(
-        [
-          panels.scaledObjectPausedTimeSeries,
-          panels.scaledObjectActiveQuery,
-          panels.scaledObjectDetailErrorTotalQuery,
-        ],
-        panelWidth=8,
-        panelHeight=4,
-        startY=22,
-      ) +
-      grid.wrapPanels(
-        [
-          panels.scaledObjectMetricValueQuery,
-          panels.scaledObjectMetricLatencyQuery,
-        ],
-        panelWidth=24,
-        panelHeight=8,
-        startY=26,
-      ),
-
-    'kubernetes-autoscaling-mixin-keda-so.json': if $._config.keda.enabled then
-      $._config.bypassDashboardValidation +
-      dashboard.new(
-        'Kubernetes / Autoscaling / Keda / Scaled Object',
-      ) +
-      dashboard.withDescription('A dashboard that monitors Keda and focuses on giving a overview for Scaled Objects. It is created using the [kubernetes-autoscaling-mixin](https://github.com/adinhodovic/kubernetes-autoscaling-mixin).') +
-      dashboard.withUid($._config.kedaScaledObjectDashboardUid) +
-      dashboard.withTags($._config.tags + ['keda']) +
-      dashboard.withTimezone('utc') +
-      dashboard.withEditable(true) +
-      dashboard.time.withFrom('now-24h') +
-      dashboard.time.withTo('now') +
-      dashboard.withVariables(variables) +
-      dashboard.withLinks(
-        [
-          dashboard.link.dashboards.new('Kubernetes / Autoscaling', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true) +
-          dashboard.link.link.options.withAsDropdown(true) +
-          dashboard.link.link.options.withIncludeVars(true) +
-          dashboard.link.link.options.withKeepTime(true),
-        ]
-      ) +
-      dashboard.withPanels(
-        rows
-      ) +
-      if $._config.annotation.enabled then
-        dashboard.withAnnotations($._config.customAnnotation)
-      else {},
-  }) + if $._config.keda.enabled then {
-    'kubernetes-autoscaling-mixin-keda-so.json'+: $._config.bypassDashboardValidation,
-  }
-  else {},
+        dashboard.withDescription('A dashboard that monitors KEDA Scaled Objects. %s' % mixinUtils.dashboards.dashboardDescriptionLink('kubernetes-autoscaling-mixin', 'https://github.com/adinhodovic/kubernetes-autoscaling-mixin')) +
+        dashboard.withUid($._config.kedaScaledObjectDashboardUid) +
+        dashboard.withTags($._config.tags + ['keda']) +
+        dashboard.withTimezone('utc') +
+        dashboard.withEditable(true) +
+        dashboard.time.withFrom('now-6h') +
+        dashboard.time.withTo('now') +
+        dashboard.withVariables(variables) +
+        dashboard.withLinks(
+          mixinUtils.dashboards.dashboardLinks('Kubernetes / Autoscaling', $._config, dropdown=true)
+        ) +
+        dashboard.withPanels(rows),
+  },
 }
