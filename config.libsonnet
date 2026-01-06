@@ -45,7 +45,9 @@ local annotation = g.dashboard.annotation;
 
       nodeCountCapacityThreshold: 75,
 
-      nodeGroupMetricsEmitted: false,
+      // Enable per-node-group metrics for detailed capacity and health monitoring.
+      // Requires --emit-per-nodegroup-metrics flag. See: https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.34.2/cluster-autoscaler/FAQ.md?plain=1#L1006
+      nodeGroupMetricsEmitted: true,
       nodeGroupUtilizationThreshold: 95,
 
       clusterAutoscalerDashboardUrl: '%s/d/%s/kubernetes-autoscaling-cluster-autoscaler' % [this.grafanaUrl, this.clusterAutoscalerDashboardUid],

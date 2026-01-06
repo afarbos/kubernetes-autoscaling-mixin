@@ -493,7 +493,7 @@ local tbOverride = tbStandardOptions.override;
           nodeGroupDetailsTable:
             local prometheus = g.query.prometheus;
             tablePanel.new('Node Group Details') +
-            tablePanel.panelOptions.withDescription('Details of node groups in the cluster.') +
+            tablePanel.panelOptions.withDescription('Details of node groups in the cluster. Requires --emit-per-nodegroup-metrics flag.') +
             tablePanel.queryOptions.withDatasource('prometheus', '$datasource') +
             tablePanel.queryOptions.withTargets([
               prometheus.new('$datasource', queries.nodeGroupMinNodes) +
@@ -609,36 +609,6 @@ local tbOverride = tbStandardOptions.override;
             ]),
         };
 
-        local nodeGroupOverviewRows =
-          if $._config.clusterAutoscaler.nodeGroupMetricsEmitted then
-            [
-              row.new('Node Group Overview') +
-              row.gridPos.withX(0) +
-              row.gridPos.withY(22) +
-              row.gridPos.withW(24) +
-              row.gridPos.withH(1),
-            ] +
-            grid.makeGrid(
-              [
-                panels.totalNodeGroupsStat,
-                panels.atCapacityNodeGroupsGauge,
-                panels.healthyNodeGroupsGauge,
-                panels.backoffNodeGroupsGauge,
-              ],
-              panelWidth=6,
-              panelHeight=4,
-              startY=23
-            ) +
-            grid.makeGrid(
-              [
-                panels.nodeGroupDetailsTable,
-              ],
-              panelWidth=24,
-              panelHeight=12,
-              startY=27
-            )
-          else [];
-
         local rows =
           [
             row.new('Summary') +
@@ -686,7 +656,34 @@ local tbOverride = tbStandardOptions.override;
             panelHeight=8,
             startY=14
           ) +
-          nodeGroupOverviewRows;
+          if $._config.clusterAutoscaler.nodeGroupMetricsEmitted then
+            [
+              row.new('Node Group Overview') +
+              row.gridPos.withX(0) +
+              row.gridPos.withY(22) +
+              row.gridPos.withW(24) +
+              row.gridPos.withH(1),
+            ] +
+            grid.makeGrid(
+              [
+                panels.totalNodeGroupsStat,
+                panels.atCapacityNodeGroupsGauge,
+                panels.healthyNodeGroupsGauge,
+                panels.backoffNodeGroupsGauge,
+              ],
+              panelWidth=6,
+              panelHeight=4,
+              startY=23
+            ) +
+            grid.makeGrid(
+              [
+                panels.nodeGroupDetailsTable,
+              ],
+              panelWidth=24,
+              panelHeight=12,
+              startY=27
+            )
+          else [];
 
         mixinUtils.dashboards.bypassDashboardValidation +
         dashboard.new(

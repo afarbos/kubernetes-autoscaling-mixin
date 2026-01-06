@@ -170,21 +170,29 @@
                 dashboard_url: $._config.clusterAutoscaler.clusterAutoscalerDashboardUrl + clusterVariableQueryString,
               },
               expr: |||
-                count (
-                  (
-                    avg (
-                      cluster_autoscaler_node_group_target_count{
-                        %(clusterAutoscalerSelector)s
-                      }
-                    ) by (%(clusterLabel)s, namespace, job, node_group) /
-                    max (
-                      cluster_autoscaler_node_group_max_count{
-                        %(clusterAutoscalerSelector)s
-                      }
-                    ) by (%(clusterLabel)s, namespace, job, node_group)
-                    * 100
-                  ) < %(nodeGroupUtilizationThreshold)s
-                ) by (%(clusterLabel)s, namespace, job) == 0
+                (
+                  count (
+                    (
+                      avg (
+                        cluster_autoscaler_node_group_target_count{
+                          %(clusterAutoscalerSelector)s
+                        }
+                      ) by (%(clusterLabel)s, namespace, job, node_group) /
+                      max (
+                        cluster_autoscaler_node_group_max_count{
+                          %(clusterAutoscalerSelector)s
+                        }
+                      ) by (%(clusterLabel)s, namespace, job, node_group)
+                      * 100
+                    ) < %(nodeGroupUtilizationThreshold)s
+                  ) by (%(clusterLabel)s, namespace, job)
+                  or
+                  count (
+                    cluster_autoscaler_node_group_max_count{
+                      %(clusterAutoscalerSelector)s
+                    }
+                  ) by (%(clusterLabel)s, namespace, job) * 0
+                ) == 0
               ||| % clusterAutoscalerConfig,
               'for': '10m',
               labels: {
